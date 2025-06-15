@@ -3,11 +3,11 @@
     "path": "./data/uniqlo_tracker.db"
   },
   "scraper": {
-    "requestDelay": 300,
+    "requestDelay": 500,
     "maxPages": 50,
-    "timeout": 30000,
+    "timeout": 60000,
     "retryAttempts": 3,
-    "retryDelay": 5000
+    "retryDelay": 2000
   },
   "scheduler": {
     "scrapingSchedule": "0 */2 * * *",
