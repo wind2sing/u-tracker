@@ -32,11 +32,20 @@
 ### 方法一：一键启动 (推荐)
 
 ```bash
-# 启动Web界面和API服务器（用于查看数据）
+# 交互式启动（推荐新手使用）
 ./start.sh
 
-# 启动完整系统（包括爬虫调度器）
-./start-full.sh
+# 直接启动API服务器模式（只查看数据）
+./start.sh --api-only
+
+# 直接启动完整系统（包括爬虫调度器）
+./start.sh --full
+
+# 启动完整系统并立即抓取数据
+./start.sh --full --with-scraping
+
+# 查看所有选项
+./start.sh --help
 ```
 
 ### 方法二：使用Docker (生产环境推荐)
@@ -68,8 +77,7 @@ npm start
 # 或
 node index.js
 
-# 3. 启动前端服务器（新终端）
-cd frontend && node server.js
+# 3. 前端已集成到API服务器中，无需单独启动
 
 # 可选：只启动一次数据抓取
 node index.js --run-once
@@ -77,7 +85,7 @@ node index.js --run-once
 
 ### 访问应用
 
-- **Web界面**: http://localhost:8080
+- **Web界面**: http://localhost:3001
 - **API接口**: http://localhost:3001/api
 - **健康检查**: http://localhost:3001/api/health
 
@@ -151,21 +159,35 @@ u-tracker/
 
 ### 启动脚本说明
 
-#### `start.sh` - Web界面启动脚本
-启动API服务器和前端服务器，用于查看和分析已有数据：
+#### `start.sh` - 统一启动脚本
+智能启动脚本，支持多种模式和选项：
+
+**交互式启动（推荐）:**
 ```bash
 ./start.sh
 ```
-- API服务器: http://localhost:3001
-- Web界面: http://localhost:8080
+- 自动检测环境和依赖
+- 交互式选择启动模式
+- 智能询问是否需要初始数据抓取
 
-#### `start-full.sh` - 完整系统启动脚本
-启动完整系统，包括爬虫调度器：
+**命令行模式:**
 ```bash
-./start-full.sh
+# API服务器模式（只查看数据）
+./start.sh --api-only
+
+# 完整系统模式（包含爬虫调度器）
+./start.sh --full
+
+# 启动时立即抓取数据
+./start.sh --full --with-scraping
+
+# 跳过初始数据抓取
+./start.sh --full --no-init-scraping
 ```
-- 包含所有服务：API、前端、爬虫调度器
-- 自动进行数据抓取和监控
+
+**两种模式的区别:**
+- **API服务器模式**: 只启动Web界面和API，适合查看现有数据
+- **完整系统模式**: 包含爬虫调度器，会自动定时抓取新数据
 
 **注意**: 从v2.0版本开始，`npm start` 或 `node index.js` 命令会同时启动API服务器和爬虫调度器，无需单独启动API服务器。
 
@@ -191,8 +213,7 @@ docker build -t uniqlo-tracker .
 docker run -d \
   --name uniqlo-tracker \
   -p 3001:3001 \
-  -p 8080:8080 \
-  -v $(pwd)/data:/app/data \
+  -v $(pwd)/u-tracker-data:/app/u-tracker-data \
   uniqlo-tracker
 ```
 
@@ -403,7 +424,7 @@ POST https://d.uniqlo.cn/p/hmall-sc-service/search/searchWithCategoryCodeAndCond
 4. **数据保留**: 默认保留90天的历史数据，可在配置文件中调整
 5. **错误处理**: 系统内置重试机制，网络错误时会自动重试
 6. **资源占用**: SQLite数据库文件会随时间增长，建议定期清理
-7. **端口占用**: 确保3001端口（API）和8080端口（前端）未被占用
+7. **端口占用**: 确保3001端口（统一服务器）未被占用
 8. **Docker部署**: 生产环境推荐使用Docker部署，便于管理和扩展
 9. **数据备份**: 建议定期备份data目录中的数据库文件
 
@@ -450,6 +471,33 @@ ISC License
 3. 创建新的 Issue 并提供详细信息
 
 ## 🆕 最新功能更新
+
+### v2.3 - 单端口部署优化 (2025-06-15)
+
+全新的单端口部署架构，简化部署和访问：
+
+#### 🎯 架构优化
+- **统一端口**: 前端和后端整合到单一端口3001
+- **简化部署**: Docker只需暴露一个端口，配置更简单
+- **更好的生产环境支持**: 避免跨域问题，更适合VPS部署
+- **自动路由**: API服务器自动提供前端静态文件服务
+
+#### ✨ 部署优势
+- **VPS友好**: 解决前端请求localhost的问题
+- **Docker简化**: 只需暴露3001端口
+- **配置简单**: 无需配置多个端口映射
+- **统一访问**: 所有功能通过http://localhost:3001访问
+
+#### 🔄 迁移说明
+- 旧版本用户无需修改，系统自动兼容
+- 新部署直接使用单端口模式
+- Docker部署更加简洁高效
+
+#### 🚀 启动脚本优化
+- **统一启动脚本**: 合并`start.sh`和`start-full.sh`为一个智能脚本
+- **交互式选择**: 支持交互式选择启动模式，更友好的用户体验
+- **灵活的初始抓取**: 用户可选择是否进行初始数据抓取，不再强制执行
+- **丰富的命令行选项**: 支持`--api-only`、`--full`、`--with-scraping`等选项
 
 ### v2.2 - 降价档数分析功能 (2025-06-15)
 

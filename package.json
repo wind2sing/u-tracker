@@ -12,7 +12,6 @@
     "run-once": "node index.js --run-once",
     "report": "node index.js --report",
     "server": "node server.js",
-    "dev": "concurrently \"npm run server\" \"cd frontend && node server.js\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

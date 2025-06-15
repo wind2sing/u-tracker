@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const Database = require('./database');
 const PriceTracker = require('./priceTracker');
 
@@ -17,7 +18,11 @@ class ApiServer {
     setupMiddleware() {
         this.app.use(cors());
         this.app.use(express.json());
-        
+
+        // 静态文件服务 - 提供前端文件
+        const frontendPath = path.join(__dirname, '../frontend');
+        this.app.use(express.static(frontendPath));
+
         // 静态文件服务 - 为商品图片提供代理
         this.app.use('/images', async (req, res, next) => {
             try {
@@ -222,6 +227,23 @@ class ApiServer {
                 console.error('Error fetching latest scraping status:', error);
                 res.status(500).json({ error: 'Internal server error' });
             }
+        });
+
+        // SPA路由支持 - 对于非API和非静态文件请求，返回index.html
+        this.app.use((req, res, next) => {
+            // 如果请求的是API路径，继续到下一个中间件（会返回404）
+            if (req.path.startsWith('/api/')) {
+                return next();
+            }
+
+            // 如果请求的是静态文件（有文件扩展名），继续到下一个中间件
+            if (path.extname(req.path)) {
+                return next();
+            }
+
+            // 对于其他所有路径（SPA路由），返回前端的index.html
+            const frontendPath = path.join(__dirname, '../frontend');
+            res.sendFile(path.join(frontendPath, 'index.html'));
         });
     }
 

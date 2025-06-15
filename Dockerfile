@@ -35,14 +35,12 @@ RUN ln -sf /app/u-tracker-data/data /app/data && \
 RUN chmod +x start.sh || true
 
 # 暴露端口
-# 3001: API 服务端口
-# 8080: 前端服务端口
-EXPOSE 3001 8080
+# 3001: 统一服务端口（API + 前端）
+EXPOSE 3001
 
 # 设置环境变量
 ENV NODE_ENV=production
 ENV PORT=3001
-ENV FRONTEND_PORT=8080
 
 # 设置启动脚本权限
 RUN chmod +x /app/docker-start.sh

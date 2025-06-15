@@ -6,8 +6,7 @@ services:
     container_name: uniqlo-tracker
     restart: unless-stopped
     ports:
-      - "3001:3001"  # API 端口
-      - "8080:8080"  # 前端端口
+      - "3001:3001"  # 统一服务端口（API + 前端）
     volumes:
       # 统一挂载数据目录（包含data、logs、reports子目录）
       - ./u-tracker-data:/app/u-tracker-data

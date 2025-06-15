@@ -42,20 +42,20 @@ sleep 10
 # 检查服务状态
 echo "🔍 Checking service health..."
 if curl -f http://localhost:3001/api/health > /dev/null 2>&1; then
-    echo "✅ API server is healthy"
+    echo "✅ Unified server (API + Frontend) is healthy"
 else
-    echo "❌ API server is not responding"
+    echo "❌ Unified server is not responding"
 fi
 
-if curl -f http://localhost:8080 > /dev/null 2>&1; then
-    echo "✅ Frontend server is healthy"
+if curl -f http://localhost:3001 > /dev/null 2>&1; then
+    echo "✅ Frontend interface is accessible"
 else
-    echo "❌ Frontend server is not responding"
+    echo "❌ Frontend interface is not responding"
 fi
 
 echo ""
 echo "🎉 Uniqlo Tracker is now running!"
-echo "📱 Web Interface: http://localhost:8080"
+echo "📱 Web Interface: http://localhost:3001"
 echo "🔗 API Endpoint: http://localhost:3001/api"
 echo ""
 echo "📁 Data Directory: ./u-tracker-data (contains data, logs, reports)"

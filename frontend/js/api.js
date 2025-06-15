@@ -2,7 +2,8 @@
 
 class ApiService {
   constructor() {
-    this.baseURL = 'http://localhost:3001/api';
+    // 使用相对路径，自动适应当前域名和端口
+    this.baseURL = '/api';
     this.timeout = 10000;
   }
 
