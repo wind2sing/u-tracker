@@ -241,11 +241,28 @@ class ApiServer {
                     });
                 }
 
+                // 检查是否已有抓取任务在运行
+                const status = await this.scheduler.getStatus();
+                if (status.isRunning || status.manualScrapingInProgress) {
+                    return res.json({
+                        success: false,
+                        message: '抓取任务已在运行中，请等待完成后再试'
+                    });
+                }
+
                 console.log('🚀 Manual full scraping triggered via API (using config settings)');
 
-                const result = await this.scheduler.triggerManualScraping();
+                // 异步启动抓取任务，不等待完成
+                this.scheduler.triggerManualScraping().catch(error => {
+                    console.error('Manual scraping task failed:', error);
+                });
 
-                res.json(result);
+                // 立即返回成功响应
+                res.json({
+                    success: true,
+                    message: '手动抓取任务已启动',
+                    note: '抓取任务正在后台运行，请通过状态接口查看进度'
+                });
             } catch (error) {
                 console.error('Error triggering manual scraping:', error);
                 res.status(500).json({
