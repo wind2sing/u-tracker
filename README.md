@@ -41,7 +41,10 @@
 ### 方法二：使用Docker (生产环境推荐)
 
 ```bash
-# 使用Docker Compose一键部署
+# 使用构建脚本一键部署（推荐）
+./build-docker.sh
+
+# 或使用Docker Compose
 docker-compose up -d
 
 # 查看日志
@@ -50,6 +53,8 @@ docker-compose logs -f
 # 停止服务
 docker-compose down
 ```
+
+**Docker优化**: 从v2.1版本开始，Docker部署只需要挂载一个volume (`u-tracker-data`)，简化了部署配置。
 
 ### 方法三：手动启动
 

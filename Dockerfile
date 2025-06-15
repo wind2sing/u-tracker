@@ -23,8 +23,13 @@ RUN npm ci --only=production
 # 复制应用源代码
 COPY . .
 
-# 创建必要的目录
-RUN mkdir -p data logs reports
+# 创建统一的数据目录结构
+RUN mkdir -p u-tracker-data/data u-tracker-data/logs u-tracker-data/reports
+
+# 创建符号链接指向统一数据目录
+RUN ln -sf /app/u-tracker-data/data /app/data && \
+    ln -sf /app/u-tracker-data/logs /app/logs && \
+    ln -sf /app/u-tracker-data/reports /app/reports
 
 # 设置权限
 RUN chmod +x start.sh || true
@@ -91,6 +96,21 @@ RUN cat > /app/docker-start.sh << 'EOF'
 #!/bin/sh
 
 echo "🚀 Starting Uniqlo Tracker in Docker container..."
+
+# 确保数据目录结构存在
+echo "📁 Ensuring data directory structure..."
+mkdir -p /app/u-tracker-data/data /app/u-tracker-data/logs /app/u-tracker-data/reports
+
+# 确保符号链接存在
+if [ ! -L /app/data ]; then
+    ln -sf /app/u-tracker-data/data /app/data
+fi
+if [ ! -L /app/logs ]; then
+    ln -sf /app/u-tracker-data/logs /app/logs
+fi
+if [ ! -L /app/reports ]; then
+    ln -sf /app/u-tracker-data/reports /app/reports
+fi
 
 # 启动 PM2 进程管理器
 echo "📡 Starting all services with PM2..."

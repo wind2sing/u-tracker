@@ -9,12 +9,8 @@ services:
       - "3001:3001"  # API 端口
       - "8080:8080"  # 前端端口
     volumes:
-      # 持久化数据目录
-      - ./data:/app/data
-      # 持久化日志目录
-      - ./logs:/app/logs
-      # 持久化报告目录
-      - ./reports:/app/reports
+      # 统一挂载数据目录（包含data、logs、reports子目录）
+      - ./u-tracker-data:/app/u-tracker-data
     environment:
       - NODE_ENV=production
       - TZ=Asia/Shanghai  # 设置时区

@@ -18,6 +18,10 @@ if ! command -v docker-compose &> /dev/null; then
     exit 1
 fi
 
+# 创建统一的数据目录
+echo "📁 Creating unified data directory..."
+mkdir -p u-tracker-data/data u-tracker-data/logs u-tracker-data/reports
+
 # 清理旧的镜像和容器
 echo "🧹 Cleaning up old containers and images..."
 docker-compose down 2>/dev/null || true
@@ -54,5 +58,6 @@ echo "🎉 Uniqlo Tracker is now running!"
 echo "📱 Web Interface: http://localhost:8080"
 echo "🔗 API Endpoint: http://localhost:3001/api"
 echo ""
+echo "📁 Data Directory: ./u-tracker-data (contains data, logs, reports)"
 echo "📊 To view logs: docker-compose logs -f"
 echo "🛑 To stop: docker-compose down"

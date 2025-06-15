@@ -10,7 +10,21 @@
 
 ## 快速开始
 
-### 方法 1: 使用 Docker Compose (推荐)
+### 方法 1: 使用构建脚本（推荐）
+
+```bash
+# 一键构建和启动
+./build-docker.sh
+```
+
+这个脚本会自动：
+1. 创建统一的数据目录 `u-tracker-data`
+2. 构建 Docker 镜像
+3. 启动容器
+4. 检查服务健康状态
+5. 显示访问地址
+
+### 方法 2: 使用 Docker Compose
 
 ```bash
 # 构建并启动服务
@@ -23,20 +37,21 @@ docker-compose logs -f
 docker-compose down
 ```
 
-### 方法 2: 使用 Docker 命令
+### 方法 3: 使用 Docker 命令
 
 ```bash
+# 创建数据目录
+mkdir -p u-tracker-data
+
 # 构建镜像
 docker build -t uniqlo-tracker .
 
-# 运行容器
+# 运行容器（只需要挂载一个volume）
 docker run -d \
   --name uniqlo-tracker \
   -p 3001:3001 \
   -p 8080:8080 \
-  -v $(pwd)/data:/app/data \
-  -v $(pwd)/logs:/app/logs \
-  -v $(pwd)/reports:/app/reports \
+  -v $(pwd)/u-tracker-data:/app/u-tracker-data \
   uniqlo-tracker
 
 # 查看日志
@@ -55,15 +70,47 @@ docker rm uniqlo-tracker
 - **API 接口**: http://localhost:3001/api
 - **健康检查**: http://localhost:3001/api/health
 
-## 数据持久化
+## 📁 数据持久化
 
-容器使用以下目录进行数据持久化：
+从v2.1版本开始，Docker部署使用统一的数据目录结构，简化了volume挂载：
 
-- `/app/data` - SQLite 数据库文件
-- `/app/logs` - 应用日志文件
-- `/app/reports` - 生成的报告文件
+```
+u-tracker-data/          # 统一的数据目录（只需挂载这一个）
+├── data/               # 数据库文件
+│   └── uniqlo_tracker.db
+├── logs/               # 日志文件
+│   ├── error.log
+│   ├── combined.log
+│   └── daily-*.log
+└── reports/            # 报告文件
+    └── daily-report-*.json
+```
 
-这些目录会自动映射到宿主机的对应目录。
+### 🔄 从旧版本迁移
+
+如果你之前使用的是多个volume挂载，可以这样迁移：
+
+```bash
+# 停止旧容器
+docker-compose down
+
+# 创建新的统一数据目录
+mkdir -p u-tracker-data
+
+# 迁移现有数据
+mv data u-tracker-data/
+mv logs u-tracker-data/
+mv reports u-tracker-data/
+
+# 使用新配置启动
+./build-docker.sh
+```
+
+### 优势
+
+- **简化部署**: 只需要挂载一个volume
+- **统一管理**: 所有数据集中在一个目录
+- **易于备份**: 备份整个 `u-tracker-data` 目录即可
 
 ## 环境变量
 
@@ -174,9 +221,8 @@ services:
       - "3001:3001"
       - "8080:8080"
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-      - ./reports:/app/reports
+      # 统一挂载数据目录（包含data、logs、reports子目录）
+      - ./u-tracker-data:/app/u-tracker-data
     environment:
       - NODE_ENV=production
       - TZ=Asia/Shanghai
