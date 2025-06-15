@@ -312,8 +312,10 @@ const getImageUrl = (imageUrl) => {
   }
 
   // Convert proxy URLs to original URLs
-  if (imageUrl.startsWith('http://localhost:3001/images')) {
-    return imageUrl.replace('http://localhost:3001/images', 'https://www.uniqlo.cn');
+  // 动态检测当前域名，支持VPS部署
+  const currentOrigin = window.location.origin;
+  if (imageUrl.startsWith(`${currentOrigin}/images`)) {
+    return imageUrl.replace(`${currentOrigin}/images`, 'https://www.uniqlo.cn');
   }
 
   // Replace im.uniqlo.cn with www.uniqlo.cn
