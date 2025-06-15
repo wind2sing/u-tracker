@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>筛选器状态测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>筛选器状态测试</h1>
+    
+    <div class="test-section">
+        <h2>当前localStorage中的筛选器状态</h2>
+        <button class="test-button" onclick="showCurrentFilters()">查看当前状态</button>
+        <div id="current-filters" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>模拟设置筛选器</h2>
+        <button class="test-button" onclick="setTestFilters()">设置测试筛选器</button>
+        <button class="test-button" onclick="clearFilters()">清除筛选器</button>
+        <div id="set-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>测试说明</h2>
+        <p>1. 点击"设置测试筛选器"来模拟用户设置筛选条件</p>
+        <p>2. 刷新页面，然后点击"查看当前状态"验证状态是否保持</p>
+        <p>3. 在实际应用中访问商品列表页面，设置筛选条件后刷新页面验证</p>
+    </div>
+
+    <script>
+        // 工具函数
+        const storage = {
+            get: (key, defaultValue = null) => {
+                try {
+                    const item = localStorage.getItem(key);
+                    return item ? JSON.parse(item) : defaultValue;
+                } catch (error) {
+                    console.error('Error reading from localStorage:', error);
+                    return defaultValue;
+                }
+            },
+            
+            set: (key, value) => {
+                try {
+                    localStorage.setItem(key, JSON.stringify(value));
+                } catch (error) {
+                    console.error('Error writing to localStorage:', error);
+                }
+            },
+            
+            remove: (key) => {
+                try {
+                    localStorage.removeItem(key);
+                } catch (error) {
+                    console.error('Error removing from localStorage:', error);
+                }
+            }
+        };
+
+        function showCurrentFilters() {
+            const filters = storage.get('products_filters');
+            const resultDiv = document.getElementById('current-filters');
+            
+            if (filters) {
+                resultDiv.textContent = JSON.stringify(filters, null, 2);
+            } else {
+                resultDiv.textContent = '没有找到保存的筛选器状态';
+            }
+        }
+
+        function setTestFilters() {
+            const testFilters = {
+                page: 1,
+                limit: 20,
+                sortBy: 'last_price_change',
+                sortOrder: 'desc',
+                search: '测试搜索',
+                stockStatus: '',
+                priceRange: '100-200',
+                priceLevel: '3',
+                colors: ['COL09', 'COL33'],
+                sizes: ['SMA004', 'SMA005'],
+                gender: '男装',
+                season: []
+            };
+            
+            storage.set('products_filters', testFilters);
+            
+            const resultDiv = document.getElementById('set-result');
+            resultDiv.textContent = '测试筛选器已设置:\n' + JSON.stringify(testFilters, null, 2);
+        }
+
+        function clearFilters() {
+            storage.remove('products_filters');
+            
+            const resultDiv = document.getElementById('set-result');
+            resultDiv.textContent = '筛选器状态已清除';
+        }
+
+        // 页面加载时显示当前状态
+        window.onload = function() {
+            showCurrentFilters();
+        };
+    </script>
+</body>
+</html>
