@@ -562,28 +562,19 @@ class DashboardPage {
           </button>
         </div>
         <div class="modal-body">
-          <form id="manual-scraping-form">
-            <div class="form-group">
-              <label>
-                <input type="checkbox" id="use-concurrent" name="useConcurrentScraper" checked>
-                使用并发抓取器（推荐）
-              </label>
-              <small class="form-text">并发抓取速度更快（3-5倍），推荐使用。如遇问题可取消勾选使用传统抓取器</small>
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <div>
+              <strong>全量数据抓取说明：</strong>
+              <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
+                <li>将抓取所有可用的商品数据，直到没有更多页面</li>
+                <li>使用并发抓取模式，速度更快（3-5倍）</li>
+                <li>抓取过程可能需要几分钟时间，请耐心等待</li>
+                <li>抓取过程中请勿重复触发或关闭页面</li>
+                <li>建议在非高峰时段进行数据抓取</li>
+              </ul>
             </div>
-
-            <div class="alert alert-info">
-              <i class="fas fa-info-circle"></i>
-              <div>
-                <strong>全量数据抓取说明：</strong>
-                <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
-                  <li>将抓取所有可用的商品数据，直到没有更多页面</li>
-                  <li>抓取过程可能需要几分钟时间，请耐心等待</li>
-                  <li>抓取过程中请勿重复触发或关闭页面</li>
-                  <li>建议在非高峰时段进行数据抓取</li>
-                </ul>
-              </div>
-            </div>
-          </form>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
@@ -602,14 +593,8 @@ class DashboardPage {
 
   // 触发手动抓取
   async triggerManualScraping() {
-    const form = utils.$('#manual-scraping-form');
-    if (!form) return;
-
-    const formData = new FormData(form);
-    const options = {
-      useConcurrentScraper: formData.get('useConcurrentScraper') === 'on'
-      // 移除maxPages，进行全量抓取
-    };
+    // 不需要表单数据，直接使用配置文件中的设置
+    const options = {};
 
     // 关闭模态框
     const modal = form.closest('.modal-overlay');
@@ -695,7 +680,7 @@ class DashboardPage {
             <h4>抓取配置：</h4>
             <ul>
               <li>抓取范围: 全量数据（所有可用页面）</li>
-              <li>抓取器类型: ${result.useConcurrentScraper ? '并发抓取器（速度更快）' : '传统抓取器（稳定可靠）'}</li>
+              <li>抓取模式: 并发抓取（配置文件控制并发数）</li>
               <li>预计时间: 根据数据量而定，通常需要几分钟</li>
             </ul>
           </div>

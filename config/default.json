@@ -11,7 +11,8 @@
     "concurrency": 3,
     "batchSize": 5,
     "enableManualTrigger": true,
-    "maxConcurrentScraping": 1
+    "maxConcurrentScraping": 1,
+    "useConcurrentScraper": true
   },
   "scheduler": {
     "scrapingSchedule": "0 */2 * * *",

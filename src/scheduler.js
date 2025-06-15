@@ -334,38 +334,13 @@ class TaskScheduler {
         return await this.startScrapingTask();
     }
 
-    async triggerManualScraping(options = {}) {
+    async triggerManualScraping() {
         this.logger.info('Manual scraping triggered from API...');
+        this.logger.info('🌐 开始全量数据抓取（使用配置文件设置）');
 
-        // 合并选项
-        const scrapingOptions = {
-            useConcurrentScraper: options.useConcurrentScraper !== undefined ? options.useConcurrentScraper : this.config.useConcurrentScraper
-        };
-
-        // 如果需要，临时切换抓取器
-        let originalScraper = null;
-        if (scrapingOptions.useConcurrentScraper !== this.config.useConcurrentScraper) {
-            originalScraper = this.scraper;
-            if (scrapingOptions.useConcurrentScraper) {
-                this.scraper = new ConcurrentUniqloScraper({...defaultConfig.scraper, ...scrapingOptions});
-                this.logger.info('🚀 临时切换到并发抓取器');
-            } else {
-                this.scraper = new UniqloScraper(defaultConfig.scraper);
-                this.logger.info('📄 临时切换到传统抓取器');
-            }
-        }
-
-        try {
-            this.logger.info('🌐 开始全量数据抓取（无页数限制）');
-            const result = await this.startScrapingTask(true);
-            return result;
-        } finally {
-            // 恢复原始抓取器
-            if (originalScraper) {
-                this.scraper = originalScraper;
-                this.logger.info('🔄 恢复原始抓取器');
-            }
-        }
+        // 直接使用当前配置的抓取器进行全量抓取
+        const result = await this.startScrapingTask(true);
+        return result;
     }
 
     async getStatus() {

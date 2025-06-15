@@ -233,8 +233,6 @@ class ApiServer {
         // 手动触发抓取
         this.app.post('/api/scraping/trigger', async (req, res) => {
             try {
-                const { useConcurrentScraper } = req.body;
-
                 // 检查是否有调度器实例
                 if (!this.scheduler) {
                     return res.status(503).json({
@@ -243,11 +241,9 @@ class ApiServer {
                     });
                 }
 
-                console.log('🚀 Manual full scraping triggered via API', { useConcurrentScraper });
+                console.log('🚀 Manual full scraping triggered via API (using config settings)');
 
-                const result = await this.scheduler.triggerManualScraping({
-                    useConcurrentScraper: useConcurrentScraper
-                });
+                const result = await this.scheduler.triggerManualScraping();
 
                 res.json(result);
             } catch (error) {
