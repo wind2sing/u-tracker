@@ -4,7 +4,25 @@ class ProductsPage {
   constructor() {
     this.products = [];
     this.pagination = {};
-    this.filters = {
+
+    // 从localStorage恢复筛选器状态
+    this.filters = this.loadFiltersFromStorage();
+
+    this.viewMode = utils.storage.get('products_view_mode', 'grid');
+    this.loading = false;
+    this.advancedFilters = null;
+
+    // Debounced search function
+    this.debouncedSearch = utils.debounce(() => {
+      this.filters.page = 1;
+      this.saveFiltersToStorage();
+      this.loadProducts();
+    }, 500);
+  }
+
+  // 从localStorage加载筛选器状态
+  loadFiltersFromStorage() {
+    const defaultFilters = {
       page: 1,
       limit: 20,
       sortBy: 'updated_at',
@@ -18,15 +36,68 @@ class ProductsPage {
       gender: '',
       season: []
     };
-    this.viewMode = utils.storage.get('products_view_mode', 'grid');
-    this.loading = false;
-    this.advancedFilters = null;
 
-    // Debounced search function
-    this.debouncedSearch = utils.debounce(() => {
-      this.filters.page = 1;
-      this.loadProducts();
-    }, 500);
+    const savedFilters = utils.storage.get('products_filters', defaultFilters);
+
+    // 确保页码重置为1（避免刷新后显示空页面）
+    return {
+      ...savedFilters,
+      page: 1
+    };
+  }
+
+  // 保存筛选器状态到localStorage
+  saveFiltersToStorage() {
+    utils.storage.set('products_filters', this.filters);
+  }
+
+  // 恢复筛选器UI状态
+  restoreFilterUI() {
+    // 恢复搜索框
+    const searchInput = utils.$('#search-input');
+    if (searchInput) {
+      searchInput.value = this.filters.search || '';
+    }
+
+    // 恢复排序选择
+    const sortSelect = utils.$('#sort-select');
+    if (sortSelect) {
+      sortSelect.value = `${this.filters.sortBy}:${this.filters.sortOrder}`;
+    }
+
+    // 恢复库存筛选
+    const stockSelect = utils.$('#stock-select');
+    if (stockSelect) {
+      stockSelect.value = this.filters.stockStatus || '';
+    }
+
+    // 恢复价格筛选
+    utils.$$('input[name="price"]').forEach(input => {
+      input.checked = input.value === this.filters.priceRange;
+    });
+
+    // 恢复降价档数筛选
+    utils.$$('input[name="price-level"]').forEach(input => {
+      input.checked = input.value === this.filters.priceLevel;
+    });
+
+    // 恢复性别筛选
+    utils.$$('input[name="gender"]').forEach(input => {
+      input.checked = input.value === this.filters.gender;
+    });
+
+    // 恢复颜色筛选
+    utils.$$('#color-content input[type="checkbox"]').forEach(input => {
+      input.checked = this.filters.colors.includes(input.value);
+    });
+
+    // 恢复尺码筛选
+    utils.$$('#size-content input[type="checkbox"]').forEach(input => {
+      input.checked = this.filters.sizes.includes(input.value);
+    });
+
+    // 更新筛选器标签
+    this.updateFilterLabels();
   }
 
   async initializeAdvancedFilters() {
@@ -85,6 +156,7 @@ class ProductsPage {
     utils.delegate(document, 'input[name="price"]', 'change', (e) => {
       this.filters.priceRange = e.target.value;
       this.filters.page = 1;
+      this.saveFiltersToStorage();
       this.updateFilterLabels();
       this.loadProducts();
     });
@@ -93,6 +165,7 @@ class ProductsPage {
     utils.delegate(document, 'input[name="price-level"]', 'change', (e) => {
       this.filters.priceLevel = e.target.value;
       this.filters.page = 1;
+      this.saveFiltersToStorage();
       this.updateFilterLabels();
       this.loadProducts();
     });
@@ -101,6 +174,7 @@ class ProductsPage {
     utils.delegate(document, 'input[name="gender"]', 'change', (e) => {
       this.filters.gender = e.target.value;
       this.filters.page = 1;
+      this.saveFiltersToStorage();
       this.updateFilterLabels();
       this.loadProducts();
     });
@@ -110,6 +184,7 @@ class ProductsPage {
       const colorCheckboxes = utils.$$('#color-content input[type="checkbox"]:checked');
       this.filters.colors = Array.from(colorCheckboxes).map(cb => cb.value).join(',').split(',').filter(Boolean);
       this.filters.page = 1;
+      this.saveFiltersToStorage();
       this.updateFilterLabels();
       this.loadProducts();
     });
@@ -119,6 +194,7 @@ class ProductsPage {
       const sizeCheckboxes = utils.$$('#size-content input[type="checkbox"]:checked');
       this.filters.sizes = Array.from(sizeCheckboxes).map(cb => cb.value).join(',').split(',').filter(Boolean);
       this.filters.page = 1;
+      this.saveFiltersToStorage();
       this.updateFilterLabels();
       this.loadProducts();
     });
@@ -456,7 +532,12 @@ class ProductsPage {
     router.setContent(html);
     await this.initializeAdvancedFilters();
     this.bindEvents();
-    this.updateFilterLabels();
+
+    // 恢复筛选器UI状态（在DOM渲染完成后）
+    setTimeout(() => {
+      this.restoreFilterUI();
+    }, 0);
+
     await this.loadProducts();
   }
 
@@ -478,6 +559,7 @@ class ProductsPage {
         this.filters.sortBy = sortBy;
         this.filters.sortOrder = sortOrder;
         this.filters.page = 1;
+        this.saveFiltersToStorage();
         this.loadProducts();
       });
     }
@@ -488,6 +570,7 @@ class ProductsPage {
       utils.on(stockSelect, 'change', (e) => {
         this.filters.stockStatus = e.target.value;
         this.filters.page = 1;
+        this.saveFiltersToStorage();
         this.loadProducts();
       });
     }
@@ -498,6 +581,7 @@ class ProductsPage {
       utils.on(priceSelect, 'change', (e) => {
         this.filters.priceRange = e.target.value;
         this.filters.page = 1;
+        this.saveFiltersToStorage();
         this.loadProducts();
       });
     }
@@ -632,6 +716,7 @@ class ProductsPage {
         this.pagination.pages,
         (page) => {
           this.filters.page = page;
+          this.saveFiltersToStorage();
           this.loadProducts();
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -675,6 +760,9 @@ class ProductsPage {
       gender: '',
       season: []
     };
+
+    // 清除保存的筛选器状态
+    this.saveFiltersToStorage();
 
     // Update form elements
     const searchInput = utils.$('#search-input');
