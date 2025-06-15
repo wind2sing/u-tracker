@@ -565,10 +565,10 @@ class DashboardPage {
           <form id="manual-scraping-form">
             <div class="form-group">
               <label>
-                <input type="checkbox" id="use-concurrent" name="useConcurrentScraper" ${this.schedulerStatus?.scraperType === 'concurrent' ? 'checked' : ''}>
-                使用并发抓取器
+                <input type="checkbox" id="use-concurrent" name="useConcurrentScraper" checked>
+                使用并发抓取器（推荐）
               </label>
-              <small class="form-text">并发抓取速度更快，但会增加服务器负载</small>
+              <small class="form-text">并发抓取速度更快（3-5倍），推荐使用。如遇问题可取消勾选使用传统抓取器</small>
             </div>
 
             <div class="alert alert-info">
