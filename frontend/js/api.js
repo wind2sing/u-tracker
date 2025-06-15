@@ -134,6 +134,14 @@ class ApiService {
   async getSchedulerStatus() {
     return this.request('/scheduler/status');
   }
+
+  // Cleanup stale scraping tasks
+  async cleanupStaleTasks(timeoutMinutes = 30) {
+    return this.request('/scraping/cleanup', {
+      method: 'POST',
+      body: JSON.stringify({ timeoutMinutes })
+    });
+  }
 }
 
 // Create global API instance

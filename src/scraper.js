@@ -123,7 +123,7 @@ class UniqloScraper {
         }
     }
 
-    async fetchAllProducts(maxPages = null) {
+    async fetchAllProducts(maxPages = null, heartbeatCallback = null) {
         const allProducts = [];
         let currentPage = 1;
         let hasMore = true;
@@ -137,13 +137,18 @@ class UniqloScraper {
 
         while (hasMore && currentPage <= maxPagesToFetch) {
             try {
+                // 发送心跳（如果提供了回调）
+                if (heartbeatCallback && typeof heartbeatCallback === 'function') {
+                    await heartbeatCallback(currentPage, maxPagesToFetch);
+                }
+
                 const result = await this.fetchPageWithRetry(currentPage);
-                
+
                 if (result.products.length > 0) {
                     allProducts.push(...result.products);
                     hasMore = result.hasMore;
                     currentPage++;
-                    
+
                     // 添加延迟，避免请求过于频繁
                     if (hasMore) {
                         console.log(`等待 ${this.requestDelay}ms 后继续...`);

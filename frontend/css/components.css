@@ -1631,3 +1631,9 @@
   font-size: var(--font-size-xs);
   padding: var(--spacing-xs) var(--spacing-sm);
 }
+
+.scraping-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+}

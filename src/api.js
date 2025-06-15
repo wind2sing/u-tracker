@@ -219,10 +219,17 @@ class ApiServer {
                 const latestStatus = await this.db.getLatestScrapingStatus('scraping');
                 const runningTasks = await this.db.getRunningScrapingTasks();
 
+                // 获取基于心跳的真实运行状态
+                const realRunningStatus = await this.db.getRealRunningTasks(60);
+
                 res.json({
                     latest: latestStatus,
                     isRunning: runningTasks.length > 0,
-                    runningTasks: runningTasks
+                    runningTasks: runningTasks,
+                    // 新增：基于心跳的真实状态
+                    reallyRunning: realRunningStatus.isReallyRunning,
+                    activeTasksWithHeartbeat: realRunningStatus.active,
+                    staleTasksWithoutHeartbeat: realRunningStatus.stale
                 });
             } catch (error) {
                 console.error('Error fetching latest scraping status:', error);
@@ -291,6 +298,34 @@ class ApiServer {
             } catch (error) {
                 console.error('Error fetching scheduler status:', error);
                 res.status(500).json({ error: 'Internal server error' });
+            }
+        });
+
+        // 清理僵尸抓取任务
+        this.app.post('/api/scraping/cleanup', async (req, res) => {
+            try {
+                const { timeoutMinutes = 30 } = req.body;
+                const cleanedTasks = await this.db.cleanupStaleScrapingTasks(timeoutMinutes);
+
+                // 同时重置调度器的内存状态
+                if (this.scheduler) {
+                    this.scheduler.isRunning = false;
+                    this.scheduler.manualScrapingInProgress = false;
+                    console.log('🔄 重置调度器运行状态');
+                }
+
+                res.json({
+                    success: true,
+                    message: `清理了 ${cleanedTasks} 个僵尸抓取任务`,
+                    cleanedTasks: cleanedTasks
+                });
+            } catch (error) {
+                console.error('Error cleaning up stale scraping tasks:', error);
+                res.status(500).json({
+                    success: false,
+                    error: 'Internal server error',
+                    message: error.message
+                });
             }
         });
 

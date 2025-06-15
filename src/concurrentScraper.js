@@ -172,7 +172,7 @@ class ConcurrentUniqloScraper {
         });
     }
 
-    async fetchAllProductsConcurrent(maxPages = null) {
+    async fetchAllProductsConcurrent(maxPages = null, heartbeatCallback = null) {
         const startTime = Date.now();
         const maxPagesToFetch = maxPages || this.config.maxPages || 999; // 设置一个很大的默认值
 
@@ -204,6 +204,11 @@ class ConcurrentUniqloScraper {
             }
 
             console.log(`📦 处理批次: 页面 ${batchStart}-${batchEnd}`);
+
+            // 发送心跳（如果提供了回调）
+            if (heartbeatCallback && typeof heartbeatCallback === 'function') {
+                await heartbeatCallback(batchStart, maxPagesToFetch);
+            }
 
             // 并发处理当前批次
             const batchPromises = batch.map(page => this.queueRequest(page));
@@ -259,8 +264,8 @@ class ConcurrentUniqloScraper {
     }
 
     // 兼容原有接口
-    async fetchAllProducts(maxPages = null) {
-        return this.fetchAllProductsConcurrent(maxPages);
+    async fetchAllProducts(maxPages = null, heartbeatCallback = null) {
+        return this.fetchAllProductsConcurrent(maxPages, heartbeatCallback);
     }
 
     getStats() {

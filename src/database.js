@@ -93,6 +93,9 @@ class Database {
                 alerts_generated INTEGER DEFAULT 0,
                 error_message TEXT,
                 error_details TEXT,
+                last_heartbeat DATETIME, -- 心跳时间戳
+                current_page INTEGER DEFAULT 0, -- 当前抓取页数
+                total_pages INTEGER DEFAULT 0, -- 总页数
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `;
@@ -118,10 +121,42 @@ class Database {
                 await this.run(indexQuery);
             }
 
+            // 执行数据库迁移（添加新列）
+            await this.migrateDatabase();
+
             console.log('Database tables initialized successfully');
         } catch (error) {
             console.error('Error initializing database tables:', error);
             throw error;
+        }
+    }
+
+    // 数据库迁移：添加心跳相关列
+    async migrateDatabase() {
+        try {
+            // 检查是否需要添加心跳相关列
+            const tableInfo = await this.all("PRAGMA table_info(scraping_status)");
+            const columnNames = tableInfo.map(col => col.name);
+
+            if (!columnNames.includes('last_heartbeat')) {
+                console.log('添加 last_heartbeat 列...');
+                await this.run('ALTER TABLE scraping_status ADD COLUMN last_heartbeat DATETIME');
+            }
+
+            if (!columnNames.includes('current_page')) {
+                console.log('添加 current_page 列...');
+                await this.run('ALTER TABLE scraping_status ADD COLUMN current_page INTEGER DEFAULT 0');
+            }
+
+            if (!columnNames.includes('total_pages')) {
+                console.log('添加 total_pages 列...');
+                await this.run('ALTER TABLE scraping_status ADD COLUMN total_pages INTEGER DEFAULT 0');
+            }
+
+            console.log('数据库迁移完成');
+        } catch (error) {
+            console.error('数据库迁移失败:', error);
+            // 不抛出错误，允许系统继续运行
         }
     }
 
@@ -375,6 +410,80 @@ class Database {
             ORDER BY start_time DESC
         `;
         return await this.all(sql);
+    }
+
+    // 清理僵尸抓取任务（超过一定时间仍为running状态的任务）
+    async cleanupStaleScrapingTasks(timeoutMinutes = 30) {
+        const cutoffTime = new Date(Date.now() - timeoutMinutes * 60 * 1000).toISOString();
+
+        const sql = `
+            UPDATE scraping_status
+            SET status = 'failed',
+                end_time = CURRENT_TIMESTAMP,
+                error_message = 'Task timeout - cleaned up on restart'
+            WHERE status = 'running'
+            AND start_time < ?
+        `;
+
+        const result = await this.run(sql, [cutoffTime]);
+        return result.changes;
+    }
+
+    // 更新抓取任务心跳
+    async updateScrapingHeartbeat(id, currentPage = 0, totalPages = 0) {
+        const sql = `
+            UPDATE scraping_status
+            SET last_heartbeat = CURRENT_TIMESTAMP,
+                current_page = ?,
+                total_pages = ?
+            WHERE id = ? AND status = 'running'
+        `;
+
+        return await this.run(sql, [currentPage, totalPages, id]);
+    }
+
+    // 检查是否有活跃的抓取任务（基于心跳）
+    async getActiveScrapingTasks(heartbeatTimeoutSeconds = 60) {
+        const cutoffTime = new Date(Date.now() - heartbeatTimeoutSeconds * 1000).toISOString();
+
+        const sql = `
+            SELECT * FROM scraping_status
+            WHERE status = 'running'
+            AND last_heartbeat IS NOT NULL
+            AND last_heartbeat > ?
+            ORDER BY start_time DESC
+        `;
+
+        return await this.all(sql, [cutoffTime]);
+    }
+
+    // 获取真实运行中的任务（基于心跳检查）
+    async getRealRunningTasks(heartbeatTimeoutSeconds = 60) {
+        const activeTasks = await this.getActiveScrapingTasks(heartbeatTimeoutSeconds);
+        const staleTasks = await this.getStaleRunningTasks(heartbeatTimeoutSeconds);
+
+        return {
+            active: activeTasks,
+            stale: staleTasks,
+            isReallyRunning: activeTasks.length > 0
+        };
+    }
+
+    // 获取失去心跳的运行任务
+    async getStaleRunningTasks(heartbeatTimeoutSeconds = 60) {
+        const cutoffTime = new Date(Date.now() - heartbeatTimeoutSeconds * 1000).toISOString();
+
+        const sql = `
+            SELECT * FROM scraping_status
+            WHERE status = 'running'
+            AND (
+                last_heartbeat IS NULL
+                OR last_heartbeat <= ?
+            )
+            ORDER BY start_time DESC
+        `;
+
+        return await this.all(sql, [cutoffTime]);
     }
 }
 

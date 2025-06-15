@@ -428,6 +428,49 @@ POST https://d.uniqlo.cn/p/hmall-sc-service/search/searchWithCategoryCodeAndCond
 8. **Docker部署**: 生产环境推荐使用Docker部署，便于管理和扩展
 9. **数据备份**: 建议定期备份data目录中的数据库文件
 
+## 故障排除
+
+### 抓取任务卡住问题
+
+如果遇到前端显示"抓取中"但后端日志显示"Maximum concurrent scraping tasks reached"的问题：
+
+**问题原因**: 数据库中存在状态为'running'的僵尸任务记录，通常由于系统异常关闭或重启导致。
+
+**解决方案**:
+
+1. **心跳机制**: 系统现在使用心跳机制实时检测抓取状态，更加准确可靠
+2. **自动清理**: 系统启动时会自动清理超过30分钟的僵尸任务并重置内存状态
+3. **手动清理**: 在仪表板页面点击"清理任务"按钮（同时重置前后端状态）
+4. **强制刷新**: 在仪表板页面点击"刷新状态"按钮强制更新显示
+5. **命令行清理**: 运行测试脚本
+   ```bash
+   # 检查并清理僵尸任务
+   node test-cleanup.js
+
+   # 强制清理所有超过5分钟的任务
+   node test-cleanup.js --force
+
+   # 创建测试僵尸任务然后清理
+   node test-cleanup.js --create-zombie
+   ```
+6. **心跳状态检查**: 验证心跳机制
+   ```bash
+   # 检查当前心跳状态
+   node test-heartbeat.js
+
+   # 创建测试任务验证心跳
+   node test-heartbeat.js --create-real
+   ```
+7. **API清理**: 调用清理接口
+   ```bash
+   curl -X POST http://localhost:3001/api/scraping/cleanup
+   ```
+
+**预防措施**:
+- 使用 `Ctrl+C` 正常关闭程序
+- 避免强制杀死进程
+- 定期检查抓取状态
+
 ## 开发和扩展
 
 ### 添加新的监控分类

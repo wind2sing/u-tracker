@@ -62,6 +62,18 @@ class TaskScheduler {
         try {
             await this.db.connect();
             await this.db.initTables();
+
+            // 清理超过30分钟仍为running状态的僵尸任务
+            const cleanedTasks = await this.db.cleanupStaleScrapingTasks(30);
+            if (cleanedTasks > 0) {
+                this.logger.info(`🧹 清理了 ${cleanedTasks} 个僵尸抓取任务`);
+            }
+
+            // 重置内存中的运行状态，防止因异常关闭导致状态不一致
+            this.isRunning = false;
+            this.manualScrapingInProgress = false;
+            this.logger.info('🔄 重置调度器运行状态');
+
             this.logger.info('TaskScheduler initialized successfully');
         } catch (error) {
             this.logger.error('Failed to initialize TaskScheduler:', error);
@@ -110,8 +122,21 @@ class TaskScheduler {
             });
             scrapingStatusId = statusResult.id;
 
-            // 抓取商品数据
-            const products = await this.scraper.fetchAllProducts(this.config.maxPages);
+            // 立即发送第一次心跳
+            await this.db.updateScrapingHeartbeat(scrapingStatusId, 0, 0);
+
+            // 创建心跳回调函数
+            const heartbeatCallback = async (currentPage, totalPages) => {
+                try {
+                    await this.db.updateScrapingHeartbeat(scrapingStatusId, currentPage, totalPages);
+                    console.log(`📡 心跳更新: 页面 ${currentPage}/${totalPages}`);
+                } catch (error) {
+                    console.error('心跳更新失败:', error);
+                }
+            };
+
+            // 抓取商品数据（传递心跳回调）
+            const products = await this.scraper.fetchAllProducts(this.config.maxPages, heartbeatCallback);
 
             if (products.length === 0) {
                 this.logger.warn('No products fetched');
@@ -348,6 +373,10 @@ class TaskScheduler {
         const latestManualStatus = await this.db.getLatestScrapingStatus('manual_scraping');
         const runningTasks = await this.db.getRunningScrapingTasks();
 
+        // 获取基于心跳的真实运行状态
+        const realRunningStatus = await this.db.getRealRunningTasks(60); // 60秒心跳超时
+        const isReallyRunning = realRunningStatus.isReallyRunning;
+
         // 获取抓取器统计信息
         let scraperStats = {};
         if (this.scraper && typeof this.scraper.getStats === 'function') {
@@ -364,9 +393,13 @@ class TaskScheduler {
             latestManualScraping: latestManualStatus,
             runningTasks: runningTasks.length,
             hasRunningTasks: runningTasks.length > 0,
+            // 新增：基于心跳的真实状态
+            reallyRunning: isReallyRunning,
+            activeTasksWithHeartbeat: realRunningStatus.active,
+            staleTasksWithoutHeartbeat: realRunningStatus.stale,
             scraperType: this.config.useConcurrentScraper ? 'concurrent' : 'traditional',
             scraperStats: scraperStats,
-            canTriggerManual: !this.isRunning && !this.manualScrapingInProgress && runningTasks.length < this.config.maxConcurrentScraping
+            canTriggerManual: !isReallyRunning && !this.isRunning && !this.manualScrapingInProgress && runningTasks.length < this.config.maxConcurrentScraping
         };
     }
 

@@ -176,14 +176,20 @@ class DashboardPage {
       return;
     }
 
-    const { latest, isRunning, runningTasks } = this.scrapingStatus;
+    const { latest, isRunning, runningTasks, reallyRunning, activeTasksWithHeartbeat, staleTasksWithoutHeartbeat } = this.scrapingStatus;
+
+    // 简化状态判断：优先使用心跳状态，回退到传统状态
+    const isActuallyRunning = reallyRunning ||
+                             (this.schedulerStatus?.reallyRunning) ||
+                             (activeTasksWithHeartbeat && activeTasksWithHeartbeat.length > 0) ||
+                             isRunning;
 
     // 状态显示
     let statusBadge = '';
     let statusText = '';
     let statusIcon = '';
 
-    if (isRunning) {
+    if (isActuallyRunning) {
       statusBadge = 'bg-warning';
       statusText = '正在运行';
       statusIcon = 'fa-spin fa-sync-alt';
@@ -212,9 +218,13 @@ class DashboardPage {
     const nextScrapingText = utils.formatDateTime(nextScrapingTime);
 
     // 检查是否可以手动触发
-    const canTriggerManual = this.schedulerStatus?.canTriggerManual && !isRunning;
+    const canTriggerManual = this.schedulerStatus?.canTriggerManual && !isActuallyRunning;
     const scraperType = this.schedulerStatus?.scraperType || 'traditional';
     const scraperTypeText = scraperType === 'concurrent' ? '并发抓取器' : '传统抓取器';
+
+    // 检查是否有僵尸任务需要清理
+    const hasStaleTask = (staleTasksWithoutHeartbeat && staleTasksWithoutHeartbeat.length > 0) ||
+                        (runningTasks > 0 && !isActuallyRunning);
 
     container.innerHTML = `
       <div class="scraping-status-grid">
@@ -224,17 +234,42 @@ class DashboardPage {
               <i class="fas ${statusIcon}"></i>
               ${statusText}
             </span>
-            ${canTriggerManual ? `
-              <button class="btn btn-sm btn-primary" onclick="dashboardPage.showManualScrapingModal()" title="手动触发抓取">
-                <i class="fas fa-play"></i>
-                手动抓取
-              </button>
-            ` : ''}
+            <div class="scraping-actions">
+              ${canTriggerManual ? `
+                <button class="btn btn-sm btn-primary" onclick="dashboardPage.showManualScrapingModal()" title="手动触发抓取">
+                  <i class="fas fa-play"></i>
+                  手动抓取
+                </button>
+              ` : `
+                <button class="btn btn-sm btn-secondary" disabled title="抓取正在进行中">
+                  <i class="fas fa-play"></i>
+                  手动抓取
+                </button>
+              `}
+              ${hasStaleTask ? `
+                <button class="btn btn-sm btn-warning" onclick="dashboardPage.cleanupStaleTasks()" title="清理僵尸任务">
+                  <i class="fas fa-broom"></i>
+                  清理任务
+                </button>
+              ` : ''}
+            </div>
           </div>
           <div class="scraping-status-content">
             <div class="scraping-status-label">当前状态</div>
-            ${isRunning ? '<div class="text-warning">数据抓取正在进行中...</div>' : ''}
-            <div class="text-xs text-secondary mt-1">抓取器类型: ${scraperTypeText}</div>
+            ${isActuallyRunning ? `
+              <div class="text-warning">数据抓取正在进行中...</div>
+              ${activeTasksWithHeartbeat && activeTasksWithHeartbeat.length > 0 && activeTasksWithHeartbeat[0].current_page ? `
+                <div class="text-xs text-success mt-1">
+                  进度: ${activeTasksWithHeartbeat[0].current_page}/${activeTasksWithHeartbeat[0].total_pages || '?'} 页
+                </div>
+              ` : ''}
+            ` : ''}
+            ${hasStaleTask ? `
+              <div class="text-xs text-warning mt-1">
+                ⚠️ 检测到僵尸任务，建议清理
+              </div>
+            ` : ''}
+            <div class="text-xs text-secondary mt-1">抓取器: ${scraperTypeText}</div>
           </div>
         </div>
 
@@ -723,8 +758,13 @@ class DashboardPage {
 
         this.renderScrapingStatus();
 
+        // 使用基于心跳的真实状态判断
+        const isStillRunning = statusData.reallyRunning ||
+                              schedulerData.reallyRunning ||
+                              (statusData.activeTasksWithHeartbeat && statusData.activeTasksWithHeartbeat.length > 0);
+
         // 如果抓取完成，停止轮询
-        if (!statusData.isRunning && !schedulerData.manualScrapingInProgress) {
+        if (!isStillRunning) {
           clearInterval(this.scrapingPollingInterval);
           this.scrapingPollingInterval = null;
 
@@ -763,6 +803,93 @@ class DashboardPage {
       }
     }, 5000);
   }
+
+  // 清理僵尸任务
+  async cleanupStaleTasks() {
+    try {
+      // 显示确认对话框
+      const confirmed = confirm('确定要清理僵尸任务吗？这将重置卡住的抓取状态。');
+      if (!confirmed) {
+        return;
+      }
+
+      // 显示加载状态
+      if (window.app) {
+        window.app.showLoading('正在清理僵尸任务...');
+      }
+
+      const result = await api.cleanupStaleTasks(30);
+
+      if (window.app) {
+        window.app.hideLoading();
+      }
+
+      if (result.success) {
+        // 显示成功消息
+        const notification = utils.createElement('div', 'notification notification-success', `
+          <div class="notification-content">
+            <i class="fas fa-check-circle"></i>
+            <div>
+              <strong>清理完成！</strong>
+              <p>${result.message}</p>
+            </div>
+          </div>
+          <button class="notification-close" onclick="this.parentElement.remove()">
+            <i class="fas fa-times"></i>
+          </button>
+        `);
+
+        document.body.appendChild(notification);
+
+        // 5秒后自动移除通知
+        setTimeout(() => {
+          if (notification.parentElement) {
+            notification.remove();
+          }
+        }, 5000);
+
+        // 立即刷新状态，多次刷新确保状态同步
+        this.loadData();
+
+        // 1秒后再次刷新，确保后端状态已完全更新
+        setTimeout(() => {
+          this.loadData();
+        }, 1000);
+      } else {
+        throw new Error(result.message || '清理失败');
+      }
+    } catch (error) {
+      if (window.app) {
+        window.app.hideLoading();
+      }
+      console.error('清理僵尸任务失败:', error);
+
+      // 显示错误消息
+      const errorNotification = utils.createElement('div', 'notification notification-error', `
+        <div class="notification-content">
+          <i class="fas fa-exclamation-triangle"></i>
+          <div>
+            <strong>清理失败！</strong>
+            <p>${error.message}</p>
+          </div>
+        </div>
+        <button class="notification-close" onclick="this.parentElement.remove()">
+          <i class="fas fa-times"></i>
+        </button>
+      `);
+
+      document.body.appendChild(errorNotification);
+
+      // 5秒后自动移除通知
+      setTimeout(() => {
+        if (errorNotification.parentElement) {
+          errorNotification.remove();
+        }
+      }, 5000);
+    }
+  }
+
+
 
   // Cleanup when leaving the page
   destroy() {
