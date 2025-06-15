@@ -438,7 +438,7 @@ class ApiServer {
         const countResult = await this.db.get(countSql, countParams);
 
         return {
-            products: products.map(product => this.formatProduct(product)),
+            products: products.map(product => this.formatProductWithTimeConversion(product)),
             pagination: {
                 page,
                 limit,
@@ -492,7 +492,7 @@ class ApiServer {
         `;
 
         const product = await this.db.get(sql, [code]);
-        return product ? this.formatProduct(product) : null;
+        return product ? this.formatProductWithTimeConversion(product) : null;
     }
 
     formatProduct(product) {
@@ -502,6 +502,19 @@ class ApiServer {
             available_sizes: product.available_sizes ? product.available_sizes.split(',') : [],
             available_colors: product.available_colors ? product.available_colors.split(',') : [],
             category_codes: product.category_code ? product.category_code.split(',') : []
+        };
+    }
+
+    formatProductWithTimeConversion(product) {
+        return {
+            ...product,
+            main_pic: product.main_pic ? `https://www.uniqlo.cn${product.main_pic}` : null,
+            available_sizes: product.available_sizes ? product.available_sizes.split(',') : [],
+            available_colors: product.available_colors ? product.available_colors.split(',') : [],
+            category_codes: product.category_code ? product.category_code.split(',') : [],
+            // 转换时区
+            last_updated: this.convertToLocalTime(product.last_updated),
+            last_price_change: this.convertToLocalTime(product.last_price_change)
         };
     }
 
@@ -622,10 +635,19 @@ class ApiServer {
         if (!utcTimeString) return utcTimeString;
 
         try {
-            // 创建UTC时间对象
-            const utcDate = new Date(utcTimeString + (utcTimeString.includes('Z') ? '' : 'Z'));
+            // SQLite存储的是UTC时间，格式为 'YYYY-MM-DD HH:MM:SS'
+            // 我们需要将其转换为本地时间（中国时区 UTC+8）
+            let utcDate;
 
-            // 转换为中国时区 (UTC+8)
+            if (utcTimeString.includes('T')) {
+                // 如果已经是ISO格式，直接解析
+                utcDate = new Date(utcTimeString.endsWith('Z') ? utcTimeString : utcTimeString + 'Z');
+            } else {
+                // 如果是SQLite格式 'YYYY-MM-DD HH:MM:SS'，添加Z表示UTC
+                utcDate = new Date(utcTimeString + 'Z');
+            }
+
+            // 转换为中国时区（UTC+8）
             const localDate = new Date(utcDate.getTime() + (8 * 60 * 60 * 1000));
 
             // 返回ISO格式但不带Z后缀，表示本地时间
