@@ -19,16 +19,18 @@ class ApiService {
     };
 
     try {
-      console.log(`API Request: ${config.method || 'GET'} ${url}`);
-      
+      console.log(`🔗 API Request: ${config.method || 'GET'} ${url}`);
+      console.log(`🌐 Base URL: ${this.baseURL}`);
+      console.log(`📍 Current Origin: ${window.location.origin}`);
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-      
+
       const response = await fetch(url, {
         ...config,
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
 
       if (!response.ok) {
