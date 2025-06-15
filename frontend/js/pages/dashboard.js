@@ -564,12 +564,6 @@ class DashboardPage {
         <div class="modal-body">
           <form id="manual-scraping-form">
             <div class="form-group">
-              <label for="max-pages">最大抓取页数</label>
-              <input type="number" id="max-pages" name="maxPages" value="10" min="1" max="100" class="form-control">
-              <small class="form-text">建议设置较小的值进行测试，每页约20个商品</small>
-            </div>
-
-            <div class="form-group">
               <label>
                 <input type="checkbox" id="use-concurrent" name="useConcurrentScraper" ${this.schedulerStatus?.scraperType === 'concurrent' ? 'checked' : ''}>
                 使用并发抓取器
@@ -580,11 +574,12 @@ class DashboardPage {
             <div class="alert alert-info">
               <i class="fas fa-info-circle"></i>
               <div>
-                <strong>注意：</strong>
+                <strong>全量数据抓取说明：</strong>
                 <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
-                  <li>手动抓取会立即开始，请确保服务器资源充足</li>
-                  <li>抓取过程中请勿重复触发</li>
-                  <li>建议在非高峰时段进行大量数据抓取</li>
+                  <li>将抓取所有可用的商品数据，直到没有更多页面</li>
+                  <li>抓取过程可能需要几分钟时间，请耐心等待</li>
+                  <li>抓取过程中请勿重复触发或关闭页面</li>
+                  <li>建议在非高峰时段进行数据抓取</li>
                 </ul>
               </div>
             </div>
@@ -596,7 +591,7 @@ class DashboardPage {
           </button>
           <button type="button" class="btn btn-primary" onclick="dashboardPage.triggerManualScraping()">
             <i class="fas fa-play"></i>
-            开始抓取
+            开始全量抓取
           </button>
         </div>
       </div>
@@ -612,8 +607,8 @@ class DashboardPage {
 
     const formData = new FormData(form);
     const options = {
-      maxPages: parseInt(formData.get('maxPages')) || 10,
       useConcurrentScraper: formData.get('useConcurrentScraper') === 'on'
+      // 移除maxPages，进行全量抓取
     };
 
     // 关闭模态框
@@ -621,7 +616,7 @@ class DashboardPage {
     if (modal) modal.remove();
 
     // 显示加载状态
-    utils.showLoading('正在启动数据抓取...');
+    utils.showLoading('正在启动全量数据抓取...');
 
     try {
       console.log('🚀 触发手动抓取', options);
@@ -631,7 +626,7 @@ class DashboardPage {
 
       if (result.success) {
         // 显示成功消息
-        this.showScrapingResult(result, '手动抓取已启动');
+        this.showScrapingResult(result, '全量数据抓取已启动');
 
         // 立即刷新状态
         setTimeout(() => {
@@ -691,20 +686,19 @@ class DashboardPage {
           <div class="alert alert-success">
             <i class="fas fa-check-circle"></i>
             <div>
-              <strong>抓取任务已成功启动！</strong>
-              <p>您可以在抓取状态区域查看进度，页面会自动更新状态信息。</p>
+              <strong>全量数据抓取任务已成功启动！</strong>
+              <p>系统将抓取所有可用的商品数据。您可以在抓取状态区域查看进度，页面会自动更新状态信息。</p>
             </div>
           </div>
 
-          ${result.summary ? `
-            <div class="scraping-summary">
-              <h4>预期配置：</h4>
-              <ul>
-                <li>最大页数: ${result.maxPages || '默认'}</li>
-                <li>抓取器类型: ${result.useConcurrentScraper ? '并发抓取器' : '传统抓取器'}</li>
-              </ul>
-            </div>
-          ` : ''}
+          <div class="scraping-summary">
+            <h4>抓取配置：</h4>
+            <ul>
+              <li>抓取范围: 全量数据（所有可用页面）</li>
+              <li>抓取器类型: ${result.useConcurrentScraper ? '并发抓取器（速度更快）' : '传统抓取器（稳定可靠）'}</li>
+              <li>预计时间: 根据数据量而定，通常需要几分钟</li>
+            </ul>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">

@@ -174,10 +174,14 @@ class ConcurrentUniqloScraper {
 
     async fetchAllProductsConcurrent(maxPages = null) {
         const startTime = Date.now();
-        const maxPagesToFetch = maxPages || this.config.maxPages;
-        
+        const maxPagesToFetch = maxPages || this.config.maxPages || 999; // 设置一个很大的默认值
+
         console.log(`🚀 开始并发抓取优衣库商品数据...`);
-        console.log(`📊 配置: 最大页数=${maxPagesToFetch}, 并发数=${this.maxConcurrency}, 批次大小=${this.config.batchSize}`);
+        if (maxPages) {
+            console.log(`📊 配置: 最大页数=${maxPagesToFetch}, 并发数=${this.maxConcurrency}, 批次大小=${this.config.batchSize}`);
+        } else {
+            console.log(`📊 配置: 全量抓取（无页数限制）, 并发数=${this.maxConcurrency}, 批次大小=${this.config.batchSize}`);
+        }
 
         // 重置状态
         this.results = [];
@@ -243,8 +247,9 @@ class ConcurrentUniqloScraper {
         console.log(`   - 总商品数: ${allProducts.length}`);
         console.log(`   - 成功页面: ${this.results.length}`);
         console.log(`   - 失败页面: ${this.errors.length}`);
-        console.log(`   - 总耗时: ${totalTime}ms`);
+        console.log(`   - 总耗时: ${totalTime}ms (${Math.round(totalTime/1000)}秒)`);
         console.log(`   - 平均每页耗时: ${Math.round(avgTimePerPage)}ms`);
+        console.log(`   - 抓取模式: ${maxPages ? '限制页数' : '全量抓取'}`);
 
         if (this.errors.length > 0) {
             console.log(`⚠️ 失败页面详情:`, this.errors);

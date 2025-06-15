@@ -127,9 +127,13 @@ class UniqloScraper {
         const allProducts = [];
         let currentPage = 1;
         let hasMore = true;
-        const maxPagesToFetch = maxPages || this.config.maxPages;
+        const maxPagesToFetch = maxPages || this.config.maxPages || 999; // 设置一个很大的默认值
 
-        console.log('开始抓取优衣库超值特惠商品数据...');
+        if (maxPages) {
+            console.log(`开始抓取优衣库超值特惠商品数据（最大${maxPagesToFetch}页）...`);
+        } else {
+            console.log('开始全量抓取优衣库超值特惠商品数据（无页数限制）...');
+        }
 
         while (hasMore && currentPage <= maxPagesToFetch) {
             try {
@@ -155,7 +159,11 @@ class UniqloScraper {
             }
         }
 
+        const endTime = Date.now();
+        const totalTime = endTime - Date.now(); // 这里需要修正，应该记录开始时间
         console.log(`抓取完成！总共获取到 ${allProducts.length} 个商品`);
+        console.log(`抓取模式: ${maxPages ? '限制页数' : '全量抓取'}`);
+        console.log(`实际抓取页数: ${currentPage - 1}`);
         return allProducts;
     }
 

@@ -339,7 +339,6 @@ class TaskScheduler {
 
         // 合并选项
         const scrapingOptions = {
-            maxPages: options.maxPages || this.config.maxPages,
             useConcurrentScraper: options.useConcurrentScraper !== undefined ? options.useConcurrentScraper : this.config.useConcurrentScraper
         };
 
@@ -357,15 +356,8 @@ class TaskScheduler {
         }
 
         try {
-            // 临时更新maxPages配置
-            const originalMaxPages = this.config.maxPages;
-            this.config.maxPages = scrapingOptions.maxPages;
-
+            this.logger.info('🌐 开始全量数据抓取（无页数限制）');
             const result = await this.startScrapingTask(true);
-
-            // 恢复原始配置
-            this.config.maxPages = originalMaxPages;
-
             return result;
         } finally {
             // 恢复原始抓取器
