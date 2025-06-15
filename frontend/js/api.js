@@ -121,6 +121,19 @@ class ApiService {
   async getLatestScrapingStatus() {
     return this.request('/scraping-status/latest');
   }
+
+  // Manual Scraping
+  async triggerScraping(options = {}) {
+    return this.request('/scraping/trigger', {
+      method: 'POST',
+      body: JSON.stringify(options)
+    });
+  }
+
+  // Scheduler Status
+  async getSchedulerStatus() {
+    return this.request('/scheduler/status');
+  }
 }
 
 // Create global API instance

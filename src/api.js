@@ -5,12 +5,13 @@ const Database = require('./database');
 const PriceTracker = require('./priceTracker');
 
 class ApiServer {
-    constructor(port = 3001) {
+    constructor(port = 3001, scheduler = null) {
         this.app = express();
         this.port = port;
         this.db = new Database();
         this.priceTracker = new PriceTracker(this.db);
-        
+        this.scheduler = scheduler; // 调度器实例，用于手动触发抓取
+
         this.setupMiddleware();
         this.setupRoutes();
     }
@@ -225,6 +226,58 @@ class ApiServer {
                 });
             } catch (error) {
                 console.error('Error fetching latest scraping status:', error);
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
+
+        // 手动触发抓取
+        this.app.post('/api/scraping/trigger', async (req, res) => {
+            try {
+                const { maxPages, useConcurrentScraper } = req.body;
+
+                // 检查是否有调度器实例
+                if (!this.scheduler) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'Scheduler not available'
+                    });
+                }
+
+                console.log('🚀 Manual scraping triggered via API', { maxPages, useConcurrentScraper });
+
+                const result = await this.scheduler.triggerManualScraping({
+                    maxPages: maxPages ? parseInt(maxPages) : undefined,
+                    useConcurrentScraper: useConcurrentScraper
+                });
+
+                res.json(result);
+            } catch (error) {
+                console.error('Error triggering manual scraping:', error);
+                res.status(500).json({
+                    success: false,
+                    error: 'Internal server error',
+                    message: error.message
+                });
+            }
+        });
+
+        // 获取调度器状态
+        this.app.get('/api/scheduler/status', async (req, res) => {
+            try {
+                if (!this.scheduler) {
+                    return res.json({
+                        available: false,
+                        message: 'Scheduler not available'
+                    });
+                }
+
+                const status = await this.scheduler.getStatus();
+                res.json({
+                    available: true,
+                    ...status
+                });
+            } catch (error) {
+                console.error('Error fetching scheduler status:', error);
                 res.status(500).json({ error: 'Internal server error' });
             }
         });

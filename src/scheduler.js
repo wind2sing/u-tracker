@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const Database = require('./database');
 const UniqloScraper = require('./scraper');
+const ConcurrentUniqloScraper = require('./concurrentScraper');
 const PriceTracker = require('./priceTracker');
 const winston = require('winston');
 const defaultConfig = require('../config/default.json');
@@ -15,13 +16,24 @@ class TaskScheduler {
             // 每周日凌晨2点清理旧数据
             cleanupSchedule: config.cleanupSchedule || '0 2 * * 0',
             maxPages: config.maxPages || 50,
-            dataRetentionDays: config.dataRetentionDays || 90
+            dataRetentionDays: config.dataRetentionDays || 90,
+            // 并发抓取配置
+            useConcurrentScraper: config.useConcurrentScraper !== false,
+            maxConcurrentScraping: config.maxConcurrentScraping || defaultConfig.scraper?.maxConcurrentScraping || 1
         };
 
         this.db = new Database();
-        this.scraper = new UniqloScraper(defaultConfig.scraper);
+        // 根据配置选择抓取器
+        if (this.config.useConcurrentScraper) {
+            this.scraper = new ConcurrentUniqloScraper({...defaultConfig.scraper, ...config});
+            console.log('🚀 使用并发抓取器');
+        } else {
+            this.scraper = new UniqloScraper(defaultConfig.scraper);
+            console.log('📄 使用传统抓取器');
+        }
         this.priceTracker = new PriceTracker(this.db, defaultConfig.alerts);
         this.isRunning = false;
+        this.manualScrapingInProgress = false;
         this.tasks = [];
 
         // 配置日志
@@ -57,23 +69,38 @@ class TaskScheduler {
         }
     }
 
-    async startScrapingTask() {
-        if (this.isRunning) {
-            this.logger.warn('Scraping task is already running, skipping...');
-            return;
+    async startScrapingTask(isManual = false) {
+        // 检查是否有抓取任务正在运行
+        if (this.isRunning || this.manualScrapingInProgress) {
+            const message = isManual ? 'Manual scraping task is already running' : 'Scraping task is already running, skipping...';
+            this.logger.warn(message);
+            return { success: false, message };
         }
 
-        this.isRunning = true;
+        // 检查并发限制
+        const runningTasks = await this.db.getRunningScrapingTasks();
+        if (runningTasks.length >= this.config.maxConcurrentScraping) {
+            const message = `Maximum concurrent scraping tasks (${this.config.maxConcurrentScraping}) reached`;
+            this.logger.warn(message);
+            return { success: false, message };
+        }
+
+        if (isManual) {
+            this.manualScrapingInProgress = true;
+        } else {
+            this.isRunning = true;
+        }
         const startTime = new Date();
         const startTimeMs = Date.now();
         let scrapingStatusId = null;
 
         try {
-            this.logger.info('Starting scheduled scraping task...');
+            const taskType = isManual ? 'manual_scraping' : 'scraping';
+            this.logger.info(`Starting ${isManual ? 'manual' : 'scheduled'} scraping task...`);
 
             // 记录抓取开始状态
             const statusResult = await this.db.insertScrapingStatus({
-                task_type: 'scraping',
+                task_type: taskType,
                 status: 'running',
                 start_time: startTime.toISOString(),
                 products_processed: 0,
@@ -98,7 +125,7 @@ class TaskScheduler {
                         error_message: 'No products fetched'
                     });
                 }
-                return;
+                return { success: false, message: 'No products fetched' };
             }
 
             // 解析商品数据
@@ -123,13 +150,28 @@ class TaskScheduler {
                 });
             }
 
-            this.logger.info('Scraping task completed', {
+            this.logger.info(`${isManual ? 'Manual' : 'Scheduled'} scraping task completed`, {
                 duration: `${duration}ms`,
                 totalProducts: summary.totalProcessed,
                 newProducts: summary.newProducts,
                 priceChanges: summary.priceChanges,
                 alerts: summary.alerts.length
             });
+
+            // 返回成功结果
+            const result = {
+                success: true,
+                summary: {
+                    duration: duration,
+                    totalProducts: summary.totalProcessed,
+                    newProducts: summary.newProducts,
+                    priceChanges: summary.priceChanges,
+                    alerts: summary.alerts.length,
+                    significantDrops: summary.alerts.filter(alert =>
+                        alert.alert_type === 'price_drop' && alert.change_percentage <= -10
+                    ).length
+                }
+            };
 
             // 如果有重要的价格变化，记录详细信息
             if (summary.alerts.length > 0) {
@@ -144,8 +186,10 @@ class TaskScheduler {
                 }
             }
 
+            return result;
+
         } catch (error) {
-            this.logger.error('Scraping task failed:', error);
+            this.logger.error(`${isManual ? 'Manual' : 'Scheduled'} scraping task failed:`, error);
 
             // 更新抓取状态为失败
             if (scrapingStatusId) {
@@ -157,8 +201,14 @@ class TaskScheduler {
                     error_details: error.stack
                 });
             }
+
+            return { success: false, message: error.message, error: error.stack };
         } finally {
-            this.isRunning = false;
+            if (isManual) {
+                this.manualScrapingInProgress = false;
+            } else {
+                this.isRunning = false;
+            }
         }
     }
 
@@ -281,21 +331,75 @@ class TaskScheduler {
 
     async runOnce() {
         this.logger.info('Running scraping task once...');
-        await this.startScrapingTask();
+        return await this.startScrapingTask();
+    }
+
+    async triggerManualScraping(options = {}) {
+        this.logger.info('Manual scraping triggered from API...');
+
+        // 合并选项
+        const scrapingOptions = {
+            maxPages: options.maxPages || this.config.maxPages,
+            useConcurrentScraper: options.useConcurrentScraper !== undefined ? options.useConcurrentScraper : this.config.useConcurrentScraper
+        };
+
+        // 如果需要，临时切换抓取器
+        let originalScraper = null;
+        if (scrapingOptions.useConcurrentScraper !== this.config.useConcurrentScraper) {
+            originalScraper = this.scraper;
+            if (scrapingOptions.useConcurrentScraper) {
+                this.scraper = new ConcurrentUniqloScraper({...defaultConfig.scraper, ...scrapingOptions});
+                this.logger.info('🚀 临时切换到并发抓取器');
+            } else {
+                this.scraper = new UniqloScraper(defaultConfig.scraper);
+                this.logger.info('📄 临时切换到传统抓取器');
+            }
+        }
+
+        try {
+            // 临时更新maxPages配置
+            const originalMaxPages = this.config.maxPages;
+            this.config.maxPages = scrapingOptions.maxPages;
+
+            const result = await this.startScrapingTask(true);
+
+            // 恢复原始配置
+            this.config.maxPages = originalMaxPages;
+
+            return result;
+        } finally {
+            // 恢复原始抓取器
+            if (originalScraper) {
+                this.scraper = originalScraper;
+                this.logger.info('🔄 恢复原始抓取器');
+            }
+        }
     }
 
     async getStatus() {
         const latestScrapingStatus = await this.db.getLatestScrapingStatus('scraping');
+        const latestManualStatus = await this.db.getLatestScrapingStatus('manual_scraping');
         const runningTasks = await this.db.getRunningScrapingTasks();
+
+        // 获取抓取器统计信息
+        let scraperStats = {};
+        if (this.scraper && typeof this.scraper.getStats === 'function') {
+            scraperStats = this.scraper.getStats();
+        }
 
         return {
             isRunning: this.isRunning,
+            manualScrapingInProgress: this.manualScrapingInProgress,
             activeTasks: this.tasks.length,
             tasks: this.tasks.map(({ name, schedule }) => ({ name, schedule })),
             config: this.config,
             latestScraping: latestScrapingStatus,
+            latestManualScraping: latestManualStatus,
             runningTasks: runningTasks.length,
-            hasRunningTasks: runningTasks.length > 0
+            hasRunningTasks: runningTasks.length > 0,
+            scraperType: this.config.useConcurrentScraper ? 'concurrent' : 'traditional',
+            scraperStats: scraperStats,
+            canTriggerManual: !this.isRunning && !this.manualScrapingInProgress && runningTasks.length < this.config.maxConcurrentScraping
         };
     }
 

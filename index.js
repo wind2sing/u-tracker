@@ -16,16 +16,16 @@ class UniqloTracker {
         try {
             logger.info('Starting Uniqlo Price Tracker...');
 
-            // 启动API服务器
-            this.apiServer = new ApiServer(config.api?.port || 3001);
-            await this.apiServer.start();
-            logger.info('API Server started successfully');
-
             // 创建调度器实例
             this.scheduler = new TaskScheduler(config.scheduler);
 
             // 初始化调度器
             await this.scheduler.initialize();
+
+            // 启动API服务器，传入调度器实例
+            this.apiServer = new ApiServer(config.api?.port || 3001, this.scheduler);
+            await this.apiServer.start();
+            logger.info('API Server started successfully');
 
             // 设置优雅关闭
             this.setupGracefulShutdown();

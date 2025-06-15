@@ -1374,3 +1374,159 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* 手动抓取相关样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-overlay .modal {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2xl);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-overlay .modal-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.modal-overlay .modal-close:hover {
+  background: var(--gray-100);
+  color: var(--text-primary);
+}
+
+/* 通知样式 */
+.notification {
+  position: fixed;
+  top: var(--spacing-lg);
+  right: var(--spacing-lg);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-md);
+  max-width: 400px;
+  z-index: 1001;
+  animation: notificationSlideIn 0.3s ease-out;
+  border-left: 4px solid var(--primary-500);
+}
+
+.notification-success {
+  border-left-color: var(--success-500);
+}
+
+.notification-error {
+  border-left-color: var(--error-500);
+}
+
+.notification-warning {
+  border-left-color: var(--warning-500);
+}
+
+@keyframes notificationSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.notification-content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.notification-content i {
+  color: var(--success-500);
+  margin-top: 0.125rem;
+}
+
+.notification-success .notification-content i {
+  color: var(--success-500);
+}
+
+.notification-error .notification-content i {
+  color: var(--error-500);
+}
+
+.notification-warning .notification-content i {
+  color: var(--warning-500);
+}
+
+.notification-content strong {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-primary);
+}
+
+.notification-content p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.notification-close {
+  position: absolute;
+  top: var(--spacing-xs);
+  right: var(--spacing-xs);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.notification-close:hover {
+  background: var(--gray-100);
+  color: var(--text-primary);
+}
+
+/* 抓取状态头部样式 */
+.scraping-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.scraping-status-header .btn {
+  font-size: var(--font-size-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+}

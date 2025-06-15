@@ -5,9 +5,13 @@
   "scraper": {
     "requestDelay": 500,
     "maxPages": 50,
-    "timeout": 60000,
+    "timeout": 10000,
     "retryAttempts": 3,
-    "retryDelay": 2000
+    "retryDelay": 2000,
+    "concurrency": 3,
+    "batchSize": 5,
+    "enableManualTrigger": true,
+    "maxConcurrentScraping": 1
   },
   "scheduler": {
     "scrapingSchedule": "0 */2 * * *",

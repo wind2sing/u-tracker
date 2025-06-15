@@ -84,21 +84,23 @@ class DashboardPage {
 
   async loadData() {
     if (this.loading) return;
-    
+
     try {
       this.loading = true;
 
-      const [statsData, alertsData, trendingData, scrapingStatusData] = await Promise.all([
+      const [statsData, alertsData, trendingData, scrapingStatusData, schedulerStatusData] = await Promise.all([
         api.getStats(),
         api.getAlerts({ hours: 24 }),
         api.getTrendingProducts(5),
-        api.getLatestScrapingStatus()
+        api.getLatestScrapingStatus(),
+        api.getSchedulerStatus()
       ]);
 
       this.stats = statsData;
       this.alerts = alertsData.slice(0, 5); // Show only first 5 alerts
       this.trending = trendingData.slice(0, 5); // Show only first 5 trending
       this.scrapingStatus = scrapingStatusData;
+      this.schedulerStatus = schedulerStatusData;
 
       this.renderStats();
       this.renderScrapingStatus();
@@ -209,6 +211,11 @@ class DashboardPage {
     const nextScrapingTime = this.calculateNextScrapingTime();
     const nextScrapingText = utils.formatDateTime(nextScrapingTime);
 
+    // 检查是否可以手动触发
+    const canTriggerManual = this.schedulerStatus?.canTriggerManual && !isRunning;
+    const scraperType = this.schedulerStatus?.scraperType || 'traditional';
+    const scraperTypeText = scraperType === 'concurrent' ? '并发抓取器' : '传统抓取器';
+
     container.innerHTML = `
       <div class="scraping-status-grid">
         <div class="scraping-status-item">
@@ -217,10 +224,17 @@ class DashboardPage {
               <i class="fas ${statusIcon}"></i>
               ${statusText}
             </span>
+            ${canTriggerManual ? `
+              <button class="btn btn-sm btn-primary" onclick="dashboardPage.showManualScrapingModal()" title="手动触发抓取">
+                <i class="fas fa-play"></i>
+                手动抓取
+              </button>
+            ` : ''}
           </div>
           <div class="scraping-status-content">
             <div class="scraping-status-label">当前状态</div>
             ${isRunning ? '<div class="text-warning">数据抓取正在进行中...</div>' : ''}
+            <div class="text-xs text-secondary mt-1">抓取器类型: ${scraperTypeText}</div>
           </div>
         </div>
 
@@ -537,9 +551,238 @@ class DashboardPage {
     }
   }
 
+  // 显示手动抓取模态框
+  showManualScrapingModal() {
+    const modal = utils.createElement('div', 'modal-overlay', `
+      <div class="modal">
+        <div class="modal-header">
+          <h3>手动触发数据抓取</h3>
+          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="manual-scraping-form">
+            <div class="form-group">
+              <label for="max-pages">最大抓取页数</label>
+              <input type="number" id="max-pages" name="maxPages" value="10" min="1" max="100" class="form-control">
+              <small class="form-text">建议设置较小的值进行测试，每页约20个商品</small>
+            </div>
+
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="use-concurrent" name="useConcurrentScraper" ${this.schedulerStatus?.scraperType === 'concurrent' ? 'checked' : ''}>
+                使用并发抓取器
+              </label>
+              <small class="form-text">并发抓取速度更快，但会增加服务器负载</small>
+            </div>
+
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i>
+              <div>
+                <strong>注意：</strong>
+                <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
+                  <li>手动抓取会立即开始，请确保服务器资源充足</li>
+                  <li>抓取过程中请勿重复触发</li>
+                  <li>建议在非高峰时段进行大量数据抓取</li>
+                </ul>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+            取消
+          </button>
+          <button type="button" class="btn btn-primary" onclick="dashboardPage.triggerManualScraping()">
+            <i class="fas fa-play"></i>
+            开始抓取
+          </button>
+        </div>
+      </div>
+    `);
+
+    document.body.appendChild(modal);
+  }
+
+  // 触发手动抓取
+  async triggerManualScraping() {
+    const form = utils.$('#manual-scraping-form');
+    if (!form) return;
+
+    const formData = new FormData(form);
+    const options = {
+      maxPages: parseInt(formData.get('maxPages')) || 10,
+      useConcurrentScraper: formData.get('useConcurrentScraper') === 'on'
+    };
+
+    // 关闭模态框
+    const modal = form.closest('.modal-overlay');
+    if (modal) modal.remove();
+
+    // 显示加载状态
+    utils.showLoading('正在启动数据抓取...');
+
+    try {
+      console.log('🚀 触发手动抓取', options);
+      const result = await api.triggerScraping(options);
+
+      utils.hideLoading();
+
+      if (result.success) {
+        // 显示成功消息
+        this.showScrapingResult(result, '手动抓取已启动');
+
+        // 立即刷新状态
+        setTimeout(() => {
+          this.loadData();
+        }, 1000);
+
+        // 开始轮询抓取状态
+        this.startScrapingStatusPolling();
+      } else {
+        throw new Error(result.message || '启动抓取失败');
+      }
+    } catch (error) {
+      utils.hideLoading();
+      console.error('手动抓取失败:', error);
+
+      // 显示错误消息
+      const errorModal = utils.createElement('div', 'modal-overlay', `
+        <div class="modal">
+          <div class="modal-header">
+            <h3>抓取启动失败</h3>
+            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-error">
+              <i class="fas fa-exclamation-triangle"></i>
+              <div>
+                <strong>错误信息：</strong>
+                <p>${error.message}</p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">
+              确定
+            </button>
+          </div>
+        </div>
+      `);
+
+      document.body.appendChild(errorModal);
+    }
+  }
+
+  // 显示抓取结果
+  showScrapingResult(result, title) {
+    const modal = utils.createElement('div', 'modal-overlay', `
+      <div class="modal">
+        <div class="modal-header">
+          <h3>${title}</h3>
+          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            <div>
+              <strong>抓取任务已成功启动！</strong>
+              <p>您可以在抓取状态区域查看进度，页面会自动更新状态信息。</p>
+            </div>
+          </div>
+
+          ${result.summary ? `
+            <div class="scraping-summary">
+              <h4>预期配置：</h4>
+              <ul>
+                <li>最大页数: ${result.maxPages || '默认'}</li>
+                <li>抓取器类型: ${result.useConcurrentScraper ? '并发抓取器' : '传统抓取器'}</li>
+              </ul>
+            </div>
+          ` : ''}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">
+            确定
+          </button>
+        </div>
+      </div>
+    `);
+
+    document.body.appendChild(modal);
+  }
+
+  // 开始轮询抓取状态
+  startScrapingStatusPolling() {
+    // 如果已经在轮询，先停止
+    if (this.scrapingPollingInterval) {
+      clearInterval(this.scrapingPollingInterval);
+    }
+
+    // 每5秒检查一次抓取状态
+    this.scrapingPollingInterval = setInterval(async () => {
+      try {
+        const statusData = await api.getLatestScrapingStatus();
+        const schedulerData = await api.getSchedulerStatus();
+
+        this.scrapingStatus = statusData;
+        this.schedulerStatus = schedulerData;
+
+        this.renderScrapingStatus();
+
+        // 如果抓取完成，停止轮询
+        if (!statusData.isRunning && !schedulerData.manualScrapingInProgress) {
+          clearInterval(this.scrapingPollingInterval);
+          this.scrapingPollingInterval = null;
+
+          // 显示完成通知
+          if (statusData.latest && statusData.latest.status === 'completed') {
+            this.showScrapingCompleteNotification(statusData.latest);
+          }
+        }
+      } catch (error) {
+        console.error('轮询抓取状态失败:', error);
+      }
+    }, 5000);
+  }
+
+  // 显示抓取完成通知
+  showScrapingCompleteNotification(scrapingResult) {
+    const notification = utils.createElement('div', 'notification notification-success', `
+      <div class="notification-content">
+        <i class="fas fa-check-circle"></i>
+        <div>
+          <strong>数据抓取完成！</strong>
+          <p>处理了 ${scrapingResult.products_processed || 0} 个商品，发现 ${scrapingResult.price_changes || 0} 个价格变化</p>
+        </div>
+      </div>
+      <button class="notification-close" onclick="this.parentElement.remove()">
+        <i class="fas fa-times"></i>
+      </button>
+    `);
+
+    document.body.appendChild(notification);
+
+    // 5秒后自动移除通知
+    setTimeout(() => {
+      if (notification.parentElement) {
+        notification.remove();
+      }
+    }, 5000);
+  }
+
   // Cleanup when leaving the page
   destroy() {
     this.stopAutoRefresh();
+    if (this.scrapingPollingInterval) {
+      clearInterval(this.scrapingPollingInterval);
+      this.scrapingPollingInterval = null;
+    }
   }
 }
 
