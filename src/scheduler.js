@@ -18,7 +18,7 @@ class TaskScheduler {
             maxPages: config.maxPages || 50,
             dataRetentionDays: config.dataRetentionDays || 90,
             // 并发抓取配置
-            useConcurrentScraper: config.useConcurrentScraper !== false,
+            useConcurrentScraper: config.useConcurrentScraper === true,
             maxConcurrentScraping: config.maxConcurrentScraping || defaultConfig.scraper?.maxConcurrentScraping || 1
         };
 
