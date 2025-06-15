@@ -597,8 +597,10 @@ class DashboardPage {
     const options = {};
 
     // 关闭模态框
-    const modal = form.closest('.modal-overlay');
-    if (modal) modal.remove();
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) {
+      modal.remove();
+    }
 
     // 显示加载状态
     utils.showLoading('正在启动全量数据抓取...');
