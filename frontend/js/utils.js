@@ -332,15 +332,20 @@ const getImageUrl = (imageUrl) => {
 // Error Handling
 const handleError = (error, context = '') => {
   console.error(`Error ${context}:`, error);
-  
+
   let message = '发生了未知错误';
   if (error.message) {
     message = error.message;
   } else if (typeof error === 'string') {
     message = error;
   }
-  
-  showToast(message, 'error');
+
+  // 使用 components.showToast 如果可用，否则使用 console.error
+  if (window.components && window.components.showToast) {
+    window.components.showToast(message, 'error');
+  } else {
+    console.error('Toast error:', message);
+  }
 };
 
 // 颜色代码翻译映射
@@ -552,6 +557,51 @@ const calculateDiscount = (originalPrice, currentPrice) => {
   return Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
 };
 
+// 计算降价档数
+const calculatePriceLevel = (originalPrice, currentPrice) => {
+  const discount = calculateDiscount(originalPrice, currentPrice);
+
+  if (discount < 20) {
+    return 0; // 未降价或降价幅度小于20%
+  } else if (discount >= 20 && discount < 30) {
+    return 1; // 第一档降价 (20-29%)
+  } else if (discount >= 30 && discount < 35) {
+    return 2; // 第二档降价 (30-34%)
+  } else if (discount >= 35 && discount < 40) {
+    return 3; // 第三档降价 (35-39%)
+  } else if (discount >= 40 && discount < 45) {
+    return 4; // 第四档降价 (40-44%)
+  } else {
+    return 5; // 第五档降价 (45%+)
+  }
+};
+
+// 获取降价档数的显示文本
+const getPriceLevelText = (level) => {
+  const levelTexts = {
+    0: '未降价',
+    1: '第一档',
+    2: '第二档',
+    3: '第三档',
+    4: '第四档',
+    5: '第五档'
+  };
+  return levelTexts[level] || '未知';
+};
+
+// 获取降价档数的颜色类名
+const getPriceLevelColor = (level) => {
+  const levelColors = {
+    0: 'text-muted',
+    1: 'text-info',
+    2: 'text-primary',
+    3: 'text-warning',
+    4: 'text-orange',
+    5: 'text-danger'
+  };
+  return levelColors[level] || 'text-muted';
+};
+
 // 格式化评分显示
 const formatRating = (score, maxScore = 5) => {
   if (!score && score !== 0) return '';
@@ -629,5 +679,5 @@ window.utils = {
   getImageUrl,
   handleError,
   translateColor, translateSize, translateColors, translateSizes,
-  getUniqloProductUrl, calculateDiscount, formatRating, generateStarRating, formatRelativeTime
+  getUniqloProductUrl, calculateDiscount, calculatePriceLevel, getPriceLevelText, getPriceLevelColor, formatRating, generateStarRating, formatRelativeTime
 };

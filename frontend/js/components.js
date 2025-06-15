@@ -232,6 +232,12 @@ const createProductCard = (product, viewMode = 'grid') => {
                   ${discount}% OFF
                 </span>
               ` : ''}
+              ${priceLevel > 0 ? `
+                <span class="chip ${priceLevelColor} chip-sm">
+                  <i class="fas fa-layer-group"></i>
+                  ${priceLevelText}
+                </span>
+              ` : ''}
             </div>
 
             <div class="flex-start">
@@ -295,6 +301,11 @@ const createProductCard = (product, viewMode = 'grid') => {
   // 计算折扣力度
   const discount = utils.calculateDiscount(product.original_price, product.current_price);
 
+  // 计算降价档数
+  const priceLevel = utils.calculatePriceLevel(product.original_price, product.current_price);
+  const priceLevelText = utils.getPriceLevelText(priceLevel);
+  const priceLevelColor = utils.getPriceLevelColor(priceLevel);
+
 
 
   // 格式化更新时间
@@ -318,12 +329,20 @@ const createProductCard = (product, viewMode = 'grid') => {
             <span class="product-price">${currentPrice}</span>
             ${originalPrice ? `<span class="product-original-price">${originalPrice}</span>` : ''}
           </div>
-          ${discount > 0 ? `
+          ${discount > 0 || priceLevel > 0 ? `
             <div class="discount-badge">
-              <span class="chip chip-error chip-sm">
-                <i class="fas fa-tag"></i>
-                ${discount}% OFF
-              </span>
+              ${discount > 0 ? `
+                <span class="chip chip-error chip-sm">
+                  <i class="fas fa-tag"></i>
+                  ${discount}% OFF
+                </span>
+              ` : ''}
+              ${priceLevel > 0 ? `
+                <span class="chip ${priceLevelColor} chip-sm">
+                  <i class="fas fa-layer-group"></i>
+                  ${priceLevelText}
+                </span>
+              ` : ''}
             </div>
           ` : ''}
         </div>

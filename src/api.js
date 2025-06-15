@@ -73,7 +73,8 @@ class ApiServer {
                     sortOrder = 'desc',
                     inStock = '',
                     colors = '',
-                    sizes = ''
+                    sizes = '',
+                    priceLevel = ''
                 } = req.query;
 
                 const products = await this.getProducts({
@@ -89,7 +90,8 @@ class ApiServer {
                     sortOrder,
                     inStock,
                     colors,
-                    sizes
+                    sizes,
+                    priceLevel
                 });
 
                 res.json(products);
@@ -237,7 +239,8 @@ class ApiServer {
             sortOrder,
             inStock,
             colors,
-            sizes
+            sizes,
+            priceLevel
         } = options;
 
         const offset = (page - 1) * limit;
@@ -323,6 +326,30 @@ class ApiServer {
                 sizeList.forEach(size => {
                     params.push(`%${size}%`);
                 });
+            }
+        }
+
+        // 降价档数筛选
+        if (priceLevel !== undefined && priceLevel !== '') {
+            const level = parseInt(priceLevel);
+            if (level === 0) {
+                // 未降价：原价等于现价或折扣小于20%
+                whereConditions.push('(ph.original_price = ph.current_price OR ((ph.original_price - ph.current_price) / ph.original_price * 100) < 20)');
+            } else if (level === 1) {
+                // 第一档：20-29%
+                whereConditions.push('((ph.original_price - ph.current_price) / ph.original_price * 100) >= 20 AND ((ph.original_price - ph.current_price) / ph.original_price * 100) < 30');
+            } else if (level === 2) {
+                // 第二档：30-34%
+                whereConditions.push('((ph.original_price - ph.current_price) / ph.original_price * 100) >= 30 AND ((ph.original_price - ph.current_price) / ph.original_price * 100) < 35');
+            } else if (level === 3) {
+                // 第三档：35-39%
+                whereConditions.push('((ph.original_price - ph.current_price) / ph.original_price * 100) >= 35 AND ((ph.original_price - ph.current_price) / ph.original_price * 100) < 40');
+            } else if (level === 4) {
+                // 第四档：40-44%
+                whereConditions.push('((ph.original_price - ph.current_price) / ph.original_price * 100) >= 40 AND ((ph.original_price - ph.current_price) / ph.original_price * 100) < 45');
+            } else if (level === 5) {
+                // 第五档：45%+
+                whereConditions.push('((ph.original_price - ph.current_price) / ph.original_price * 100) >= 45');
             }
         }
 

@@ -12,6 +12,7 @@ class ProductsPage {
       search: '',
       stockStatus: '',
       priceRange: '',
+      priceLevel: '',
       colors: [],
       sizes: [],
       gender: '',
@@ -36,7 +37,7 @@ class ProductsPage {
 
   bindFilterDropdowns() {
     // 绑定下拉菜单切换事件
-    const dropdowns = ['gender', 'price', 'color', 'size'];
+    const dropdowns = ['gender', 'price', 'price-level', 'color', 'size'];
 
     dropdowns.forEach(type => {
       const btn = utils.$(`#${type}-btn`);
@@ -88,6 +89,14 @@ class ProductsPage {
       this.loadProducts();
     });
 
+    // 降价档数筛选
+    utils.delegate(document, 'input[name="price-level"]', 'change', (e) => {
+      this.filters.priceLevel = e.target.value;
+      this.filters.page = 1;
+      this.updateFilterLabels();
+      this.loadProducts();
+    });
+
     // 性别筛选（改为单选）
     utils.delegate(document, 'input[name="gender"]', 'change', (e) => {
       this.filters.gender = e.target.value;
@@ -126,6 +135,12 @@ class ProductsPage {
     const priceBtn = utils.$('#price-btn .filter-label');
     if (priceBtn) {
       priceBtn.textContent = this.filters.priceRange ? '价格 (1)' : '价格';
+    }
+
+    // 更新降价档数标签
+    const priceLevelBtn = utils.$('#price-level-btn .filter-label');
+    if (priceLevelBtn) {
+      priceLevelBtn.textContent = this.filters.priceLevel ? '降价档数 (1)' : '降价档数';
     }
 
     // 更新颜色标签
@@ -251,6 +266,46 @@ class ProductsPage {
                   <label class="filter-option">
                     <input type="radio" name="price" value="500+" ${this.filters.priceRange === '500+' ? 'checked' : ''}>
                     <span>¥500以上</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 降价档数筛选 -->
+            <div class="filter-dropdown" id="price-level-dropdown">
+              <button class="filter-dropdown-btn" id="price-level-btn">
+                <span class="filter-label">降价档数</span>
+                <i class="fas fa-chevron-down"></i>
+              </button>
+              <div class="filter-dropdown-content" id="price-level-content">
+                <div class="filter-options">
+                  <label class="filter-option">
+                    <input type="radio" name="price-level" value="" ${this.filters.priceLevel === '' ? 'checked' : ''}>
+                    <span>全部</span>
+                  </label>
+                  <label class="filter-option">
+                    <input type="radio" name="price-level" value="0" ${this.filters.priceLevel === '0' ? 'checked' : ''}>
+                    <span>未降价</span>
+                  </label>
+                  <label class="filter-option">
+                    <input type="radio" name="price-level" value="1" ${this.filters.priceLevel === '1' ? 'checked' : ''}>
+                    <span>第一档 (20-29%)</span>
+                  </label>
+                  <label class="filter-option">
+                    <input type="radio" name="price-level" value="2" ${this.filters.priceLevel === '2' ? 'checked' : ''}>
+                    <span>第二档 (30-34%)</span>
+                  </label>
+                  <label class="filter-option">
+                    <input type="radio" name="price-level" value="3" ${this.filters.priceLevel === '3' ? 'checked' : ''}>
+                    <span>第三档 (35-39%)</span>
+                  </label>
+                  <label class="filter-option">
+                    <input type="radio" name="price-level" value="4" ${this.filters.priceLevel === '4' ? 'checked' : ''}>
+                    <span>第四档 (40-44%)</span>
+                  </label>
+                  <label class="filter-option">
+                    <input type="radio" name="price-level" value="5" ${this.filters.priceLevel === '5' ? 'checked' : ''}>
+                    <span>第五档 (45%+)</span>
                   </label>
                 </div>
               </div>
@@ -514,6 +569,11 @@ class ProductsPage {
         delete params.gender;
       }
 
+      // Handle price level filters
+      if (!params.priceLevel) {
+        delete params.priceLevel;
+      }
+
       // Handle season filters
       if (params.season && params.season.length > 0) {
         params.season = params.season.join(',');
@@ -609,6 +669,7 @@ class ProductsPage {
       search: '',
       stockStatus: '',
       priceRange: '',
+      priceLevel: '',
       colors: [],
       sizes: [],
       gender: '',
@@ -627,6 +688,10 @@ class ProductsPage {
 
     // Reset filter dropdowns
     utils.$$('input[name="price"]').forEach(input => {
+      input.checked = input.value === '';
+    });
+
+    utils.$$('input[name="price-level"]').forEach(input => {
       input.checked = input.value === '';
     });
 

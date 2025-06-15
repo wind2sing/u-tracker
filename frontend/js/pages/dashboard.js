@@ -118,31 +118,37 @@ class DashboardPage {
     const container = utils.$('#stats-container');
     if (!container || !this.stats) return;
 
+    // 确保 components 对象已加载
+    if (!window.components || !window.components.createStatCard) {
+      console.error('Components not loaded yet');
+      return;
+    }
+
     const avgPrice = this.stats.priceRange?.avg_price || 0;
     const minPrice = this.stats.priceRange?.min_price || 0;
     const maxPrice = this.stats.priceRange?.max_price || 0;
     const priceRangeText = `${utils.formatPrice(minPrice)} - ${utils.formatPrice(maxPrice)}`;
 
     container.innerHTML = `
-      ${components.createStatCard(
+      ${window.components.createStatCard(
         '商品总数',
         utils.formatNumber(this.stats.totalProducts || 0),
         'box',
         'primary'
       )}
-      ${components.createStatCard(
+      ${window.components.createStatCard(
         '价格记录',
         utils.formatNumber(this.stats.totalPriceRecords || 0),
         'chart-line',
         'success'
       )}
-      ${components.createStatCard(
+      ${window.components.createStatCard(
         '价格警报',
         utils.formatNumber(this.stats.totalAlerts || 0),
         'bell',
         'warning'
       )}
-      ${components.createStatCard(
+      ${window.components.createStatCard(
         '平均价格',
         utils.formatPrice(avgPrice),
         'tag',
