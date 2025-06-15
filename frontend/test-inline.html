@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>内联测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .chip {
+            display: inline-block;
+            padding: 4px 8px;
+            margin: 2px;
+            background-color: #e3f2fd;
+            border-radius: 12px;
+            font-size: 12px;
+            border: 1px solid #2196f3;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>内联JavaScript测试</h1>
+    
+    <div class="test-section">
+        <h2>商品信息</h2>
+        <div id="product-info">加载中...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>翻译测试</h2>
+        <div id="translation-result"></div>
+    </div>
+
+    <script>
+        // 内联翻译函数
+        function translateColor(colorCode) {
+            const translations = {
+                'COL00': '白色',
+                'COL01': '白色系',
+                'COL02': '米色',
+                'COL03': '浅米色',
+                'COL04': '奶油色',
+                'COL05': '浅黄色',
+                'COL06': '浅灰色',
+                'COL07': '灰色系',
+                'COL08': '深灰色',
+                'COL09': '黑色系',
+                'COL10': '浅粉色',
+                'COL11': '粉色',
+                'COL12': '粉色系',
+                'COL13': '浅红色',
+                'COL14': '红色系',
+                'COL15': '深红色',
+                'COL16': '酒红色',
+                'COL17': '橙红色',
+                'COL18': '浅橙色',
+                'COL19': '橙色',
+                'COL20': '深橙色',
+                'COL21': '浅黄色',
+                'COL22': '黄色',
+                'COL23': '深黄色',
+                'COL24': '芥末黄',
+                'COL25': '浅橙色',
+                'COL26': '橙色系',
+                'COL27': '深橙色',
+                'COL28': '浅绿色',
+                'COL29': '绿色',
+                'COL30': '深绿色',
+                'COL31': '橄榄绿',
+                'COL32': '军绿色',
+                'COL33': '浅蓝色',
+                'COL34': '蓝色',
+                'COL35': '深蓝色',
+                'COL36': '海军蓝',
+                'COL37': '天蓝色',
+                'COL38': '浅紫色',
+                'COL39': '紫色',
+                'COL40': '深紫色',
+                'COL41': '薰衣草色',
+                'COL42': '浅棕色',
+                'COL43': '棕色',
+                'COL44': '深棕色',
+                'COL45': '咖啡色',
+                'COL46': '驼色',
+                'COL47': '卡其色',
+                'COL48': '土黄色',
+                'COL49': '浅青色',
+                'COL50': '青色',
+                'COL51': '深青色',
+                'COL52': '薄荷绿',
+                'COL53': '翠绿色',
+                'COL54': '森林绿',
+                'COL55': '草绿色',
+                'COL56': '橄榄色',
+                'COL57': '浅蓝绿',
+                'COL58': '蓝绿色',
+                'COL59': '深蓝绿',
+                'COL60': '浅紫蓝',
+                'COL61': '紫蓝色',
+                'COL62': '深紫蓝',
+                'COL63': '浅玫红',
+                'COL64': '玫红色',
+                'COL65': '深玫红',
+                'COL66': '浅珊瑚',
+                'COL67': '珊瑚色',
+                'COL68': '深珊瑚',
+                'COL69': '浅桃色',
+                'COL70': '桃色',
+                'COL71': '深桃色',
+                'COL72': '浅杏色',
+                'COL73': '杏色',
+                'COL74': '深杏色',
+                'COL75': '浅金色',
+                'COL76': '金色',
+                'COL77': '深金色',
+                'COL78': '浅银色',
+                'COL79': '银色',
+                'COL80': '深银色',
+                'COL81': '浅铜色',
+                'COL82': '铜色',
+                'COL83': '深铜色',
+                'COL84': '浅青铜',
+                'COL85': '青铜色',
+                'COL86': '深青铜',
+                'COL87': '浅玫瑰金',
+                'COL88': '玫瑰金',
+                'COL89': '深玫瑰金',
+                'COL90': '浅香槟',
+                'COL91': '香槟色',
+                'COL92': '深香槟',
+                'COL93': '浅象牙',
+                'COL94': '象牙色',
+                'COL95': '深象牙',
+                'COL96': '浅珍珠',
+                'COL97': '珍珠色',
+                'COL98': '深珍珠',
+                'COL99': '多色'
+            };
+            return translations[colorCode] || colorCode;
+        }
+
+        function translateSize(sizeCode) {
+            const translations = {
+                'SMA002': 'XS',
+                'SMA003': 'S', 
+                'SMA004': 'M',
+                'SMA005': 'L',
+                'SMA006': 'XL',
+                'SMA007': 'XXL',
+                'SMA008': '3XL',
+                'SMA009': '4XL',
+                'SMA010': '5XL',
+                'CMC110': '110cm',
+                'CMC120': '120cm',
+                'CMC130': '130cm',
+                'CMC140': '140cm',
+                'CMC150': '150cm',
+                'CMC160': '160cm',
+                'CMD073': '73cm',
+                'CMD080': '80cm',
+                'CMD090': '90cm',
+                'CMD100': '100cm',
+                'CMD115': '115cm',
+                'CMD120': '120cm',
+                'SIZ999': '均码',
+                'MSC025': '均码',
+                'ONE': '均码'
+            };
+            return translations[sizeCode] || sizeCode;
+        }
+
+        // 获取商品信息并显示
+        fetch('http://localhost:3001/api/products/468503')
+            .then(response => response.json())
+            .then(product => {
+                const productInfoDiv = document.getElementById('product-info');
+                productInfoDiv.innerHTML = `
+                    <h3>${product.name_zh}</h3>
+                    <p>商品编号: ${product.product_code}</p>
+                    <p>原始颜色: ${JSON.stringify(product.available_colors)}</p>
+                    <p>原始尺码: ${JSON.stringify(product.available_sizes)}</p>
+                    <p>翻译后颜色: ${product.available_colors.map(translateColor).join(', ')}</p>
+                    <p>翻译后尺码: ${product.available_sizes.map(translateSize).join(', ')}</p>
+                    <div>
+                        <strong>颜色标签:</strong>
+                        ${product.available_colors.map(color => `<span class="chip">${translateColor(color)}</span>`).join('')}
+                    </div>
+                    <div>
+                        <strong>尺码标签:</strong>
+                        ${product.available_sizes.map(size => `<span class="chip">${translateSize(size)}</span>`).join('')}
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <p><strong>图片路径:</strong> ${product.main_pic}</p>
+                        <p><strong>提取的产品ID:</strong> ${product.main_pic ? product.main_pic.match(/\/u(\d+)\//) ? 'u' + product.main_pic.match(/\/u(\d+)\//)[1] : '未找到' : '无图片'}</p>
+                        <a href="${(() => {
+                            if (product.main_pic) {
+                                const match = product.main_pic.match(/\/u(\d+)\//);
+                                if (match) {
+                                    return 'https://www.uniqlo.cn/product-detail.html?productCode=u' + match[1];
+                                }
+                            }
+                            return 'https://www.uniqlo.cn/product-detail.html?productCode=' + product.product_code;
+                        })()}" target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #2196f3; color: white; text-decoration: none; border-radius: 4px;">
+                            查看官网详情
+                        </a>
+                    </div>
+                `;
+                
+                // 显示翻译测试结果
+                const translationDiv = document.getElementById('translation-result');
+                translationDiv.innerHTML = `
+                    <p>COL12 → ${translateColor('COL12')}</p>
+                    <p>SMA003 → ${translateSize('SMA003')}</p>
+                    <p>这证明翻译功能是正常工作的！</p>
+                `;
+            })
+            .catch(error => {
+                document.getElementById('product-info').innerHTML = `<p style="color: red;">错误: ${error.message}</p>`;
+            });
+    </script>
+</body>
+</html>

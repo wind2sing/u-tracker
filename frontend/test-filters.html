@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>筛选功能测试</title>
+    <link rel="stylesheet" href="css/variables.css?v=20250614">
+    <link rel="stylesheet" href="css/base.css?v=20250614">
+    <link rel="stylesheet" href="css/components.css?v=20250614">
+    <link rel="stylesheet" href="css/layout.css?v=20250614">
+    <link rel="stylesheet" href="css/pages.css?v=20250614">
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .api-result {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>高级筛选功能测试</h1>
+        
+        <div class="test-section">
+            <h2>筛选组件测试</h2>
+            <div id="filter-container"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>API测试结果</h2>
+            <div id="api-results" class="api-result">等待筛选...</div>
+        </div>
+        
+        <div class="test-section">
+            <h2>当前筛选条件</h2>
+            <div id="current-filters" class="api-result">无筛选条件</div>
+        </div>
+    </div>
+
+    <script src="js/utils.js?v=20250614"></script>
+    <script src="js/api.js?v=20250614"></script>
+    <script src="js/components/advanced-filters.js?v=20250614"></script>
+    <script>
+        let advancedFilters;
+        
+        function onFilterChange(filters) {
+            console.log('Filters changed:', filters);
+            
+            // 显示当前筛选条件
+            const currentFiltersDiv = document.getElementById('current-filters');
+            currentFiltersDiv.textContent = JSON.stringify(filters, null, 2);
+            
+            // 测试API调用
+            testApiCall(filters);
+        }
+        
+        async function testApiCall(filters) {
+            const apiResultsDiv = document.getElementById('api-results');
+            apiResultsDiv.textContent = '正在加载...';
+            
+            try {
+                // 构建API参数
+                const params = new URLSearchParams({
+                    page: 1,
+                    limit: 5
+                });
+                
+                // 添加价格筛选
+                if (filters.priceRange && filters.priceRange.length > 0) {
+                    const priceRange = filters.priceRange[0];
+                    if (priceRange === '900+') {
+                        params.append('minPrice', '900');
+                    } else {
+                        const [min, max] = priceRange.split('-').map(Number);
+                        if (min !== undefined) params.append('minPrice', min);
+                        if (max !== undefined) params.append('maxPrice', max);
+                    }
+                }
+                
+                // 添加颜色筛选
+                if (filters.colors && filters.colors.length > 0) {
+                    params.append('colors', filters.colors.join(','));
+                }
+                
+                // 添加尺码筛选
+                if (filters.sizes && filters.sizes.length > 0) {
+                    params.append('sizes', filters.sizes.join(','));
+                }
+                
+                // 添加性别筛选
+                if (filters.gender && filters.gender.length > 0) {
+                    params.append('gender', filters.gender.join(','));
+                }
+                
+                // 添加季节筛选
+                if (filters.season && filters.season.length > 0) {
+                    params.append('season', filters.season.join(','));
+                }
+                
+                const url = `http://localhost:3001/api/products?${params.toString()}`;
+                console.log('API URL:', url);
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                apiResultsDiv.textContent = `API调用成功！
+URL: ${url}
+
+返回结果:
+总数: ${data.pagination.total}
+当前页商品数: ${data.products.length}
+
+商品列表:
+${data.products.map(p => `- ${p.name_zh} (¥${p.current_price}) [${p.available_colors.join(',')}] [${p.available_sizes.join(',')}]`).join('\n')}`;
+                
+            } catch (error) {
+                apiResultsDiv.textContent = `API调用失败: ${error.message}`;
+            }
+        }
+        
+        // 初始化筛选组件
+        document.addEventListener('DOMContentLoaded', () => {
+            advancedFilters = new AdvancedFilters(onFilterChange);
+            
+            const container = document.getElementById('filter-container');
+            container.innerHTML = advancedFilters.render();
+            advancedFilters.bindEvents();
+            
+            // 初始加载
+            testApiCall({
+                priceRange: [],
+                colors: [],
+                sizes: [],
+                gender: [],
+                season: []
+            });
+        });
+    </script>
+</body>
+</html>

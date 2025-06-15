@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>链接测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-case {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .link {
+            word-break: break-all;
+            font-family: monospace;
+            background-color: #f0f0f0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>官网链接生成测试</h1>
+    
+    <div id="test-results"></div>
+
+    <script>
+        // 内联链接生成函数
+        function getUniqloProductUrl(productCode, mainPic = null) {
+            // 如果提供了main_pic，尝试从中提取真实的产品ID
+            if (mainPic) {
+                const match = mainPic.match(/\/u(\d+)\//);
+                if (match) {
+                    const realProductCode = `u${match[1]}`;
+                    return `https://www.uniqlo.cn/product-detail.html?productCode=${realProductCode}`;
+                }
+            }
+            
+            // 如果无法从main_pic提取，使用原始的product_code作为fallback
+            return `https://www.uniqlo.cn/product-detail.html?productCode=${productCode}`;
+        }
+
+        const testCases = [
+            {
+                name: '测试案例1: 商品477344',
+                productCode: '477344',
+                mainPic: 'https://www.uniqlo.cn/hmall/test/u0000000061803/main/first/561/1.jpg',
+                expectedUrl: 'https://www.uniqlo.cn/product-detail.html?productCode=u0000000061803'
+            },
+            {
+                name: '测试案例2: 商品468503',
+                productCode: '468503',
+                mainPic: 'https://www.uniqlo.cn/hmall/test/u0000000051892/main/first/561/1.jpg',
+                expectedUrl: 'https://www.uniqlo.cn/product-detail.html?productCode=u0000000051892'
+            },
+            {
+                name: '测试案例3: 没有main_pic的情况',
+                productCode: '123456',
+                mainPic: null,
+                expectedUrl: 'https://www.uniqlo.cn/product-detail.html?productCode=123456'
+            },
+            {
+                name: '测试案例4: main_pic格式不正确',
+                productCode: '789012',
+                mainPic: 'https://example.com/image.jpg',
+                expectedUrl: 'https://www.uniqlo.cn/product-detail.html?productCode=789012'
+            }
+        ];
+
+        const resultsDiv = document.getElementById('test-results');
+
+        testCases.forEach(testCase => {
+            const actualUrl = getUniqloProductUrl(testCase.productCode, testCase.mainPic);
+            const isSuccess = actualUrl === testCase.expectedUrl;
+            
+            const div = document.createElement('div');
+            div.className = `test-case ${isSuccess ? 'success' : 'error'}`;
+            div.innerHTML = `
+                <h3>${testCase.name}</h3>
+                <p><strong>商品代码:</strong> ${testCase.productCode}</p>
+                <p><strong>图片路径:</strong> ${testCase.mainPic || '无'}</p>
+                <p><strong>期望链接:</strong> <span class="link">${testCase.expectedUrl}</span></p>
+                <p><strong>实际链接:</strong> <span class="link">${actualUrl}</span></p>
+                <p><strong>结果:</strong> ${isSuccess ? '✓ 通过' : '✗ 失败'}</p>
+                ${isSuccess ? `<p><a href="${actualUrl}" target="_blank">测试链接</a></p>` : ''}
+            `;
+            resultsDiv.appendChild(div);
+        });
+
+        // 实际API测试
+        fetch('http://localhost:3001/api/products/477344')
+            .then(response => response.json())
+            .then(product => {
+                const actualUrl = getUniqloProductUrl(product.product_code, product.main_pic);
+                
+                const div = document.createElement('div');
+                div.className = 'test-case success';
+                div.innerHTML = `
+                    <h3>实际API测试: ${product.name_zh}</h3>
+                    <p><strong>商品代码:</strong> ${product.product_code}</p>
+                    <p><strong>图片路径:</strong> ${product.main_pic}</p>
+                    <p><strong>生成的链接:</strong> <span class="link">${actualUrl}</span></p>
+                    <p><a href="${actualUrl}" target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">测试官网链接</a></p>
+                `;
+                resultsDiv.appendChild(div);
+            })
+            .catch(error => {
+                const div = document.createElement('div');
+                div.className = 'test-case error';
+                div.innerHTML = `
+                    <h3>API测试失败</h3>
+                    <p><strong>错误:</strong> ${error.message}</p>
+                `;
+                resultsDiv.appendChild(div);
+            });
+    </script>
+</body>
+</html>

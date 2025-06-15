@@ -1,0 +1,41 @@
+{
+  "database": {
+    "path": "./data/uniqlo_tracker.db"
+  },
+  "scraper": {
+    "requestDelay": 500,
+    "maxPages": 50,
+    "timeout": 30000,
+    "retryAttempts": 3,
+    "retryDelay": 5000
+  },
+  "scheduler": {
+    "scrapingSchedule": "0 */2 * * *",
+    "reportSchedule": "0 8 * * *",
+    "cleanupSchedule": "0 2 * * 0",
+    "dataRetentionDays": 90
+  },
+  "logging": {
+    "level": "info",
+    "logDir": "./logs",
+    "maxFiles": 14,
+    "maxSize": "20m"
+  },
+  "alerts": {
+    "priceDropThreshold": 5,
+    "significantDropThreshold": 10,
+    "enableEmailNotifications": false,
+    "emailConfig": {
+      "host": "",
+      "port": 587,
+      "secure": false,
+      "auth": {
+        "user": "",
+        "pass": ""
+      }
+    }
+  },
+  "api": {
+    "port": 3001
+  }
+}

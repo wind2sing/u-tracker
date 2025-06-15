@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>增强商品卡片测试</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/pages.css">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .test-section {
+            margin-bottom: 3rem;
+        }
+        
+        .test-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+        
+        .view-toggle {
+            margin-bottom: 2rem;
+        }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .list-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>增强商品卡片测试页面</h1>
+        <p>测试新增的功能：更新时间、价格变动时间、评分、评价量、折扣力度</p>
+        
+        <div class="view-toggle">
+            <button id="grid-view-btn" class="btn btn-primary">网格视图</button>
+            <button id="list-view-btn" class="btn btn-secondary">列表视图</button>
+        </div>
+        
+        <div class="test-section">
+            <h2 class="test-title">商品卡片展示</h2>
+            <div id="products-container" class="grid-container">
+                <!-- 商品卡片将在这里动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/components.js"></script>
+    
+    <script>
+        let mockProducts = [];
+        let realProducts = [];
+
+        // 加载真实数据
+        async function loadRealProducts() {
+            try {
+                const response = await fetch('http://localhost:3001/api/products?limit=4');
+                const data = await response.json();
+                realProducts = data.products || [];
+
+                // 为了演示，给一些产品添加模拟的评分数据
+                realProducts.forEach((product, index) => {
+                    if (index === 0) {
+                        product.score = 4.8;
+                        product.evaluation_count = 156;
+                        product.last_price_change = "2025-06-13T15:20:00Z";
+                        product.last_change_percentage = -40.4;
+                    } else if (index === 1) {
+                        product.score = 4.2;
+                        product.evaluation_count = 23;
+                        product.last_price_change = "2025-06-12T11:45:00Z";
+                        product.last_change_percentage = -25.3;
+                    } else if (index === 2) {
+                        product.score = 4.9;
+                        product.evaluation_count = 89;
+                        product.last_price_change = "2025-06-11T14:30:00Z";
+                        product.last_change_percentage = -50.3;
+                    }
+                });
+
+                console.log('Loaded real products:', realProducts);
+                renderProducts();
+            } catch (error) {
+                console.error('Error loading real products:', error);
+                // 如果无法加载真实数据，使用模拟数据
+                useMockData();
+            }
+        }
+
+        function useMockData() {
+            // 模拟商品数据，包含新字段
+            mockProducts = [
+                {
+                    product_code: "466872",
+                    name_zh: "宽松撞色T恤5分袖短袖T恤撞色休闲",
+                    main_pic: "/hmall/test/u0000000061995/main/first/561/1.jpg",
+                    current_price: 59,
+                    original_price: 99,
+                    stock_status: "Y",
+                    available_colors: ["COL01", "COL09", "COL07"],
+                    available_sizes: ["SMA003", "SMA004", "SMA005", "SMA006"],
+                    sales_count: 3498,
+                    evaluation_count: 41,
+                    score: 4.78,
+                    last_updated: "2025-06-14T10:30:00Z",
+                    last_price_change: "2025-06-13T15:20:00Z",
+                    last_change_percentage: -40.4
+                },
+                {
+                    product_code: "469247",
+                    name_zh: "UT MFA FOREVER印花短袖T恤",
+                    main_pic: "/hmall/test/u0000000050852/main/first/561/1.jpg",
+                    current_price: 59,
+                    original_price: 99,
+                    stock_status: "Y",
+                    available_colors: ["COL69"],
+                    available_sizes: ["SMA006", "SMA004", "SMA002", "SMA003", "SMA005"],
+                    sales_count: 12947,
+                    evaluation_count: 156,
+                    score: 4.84,
+                    last_updated: "2025-06-14T09:15:00Z",
+                    last_price_change: "2025-06-12T11:45:00Z",
+                    last_change_percentage: -40.4
+                },
+                {
+                    product_code: "467767",
+                    name_zh: "DRY-EX速干高弹力运动长裤束脚加长款69~75cm",
+                    main_pic: "/hmall/test/u0000000062094/main/first/561/1.jpg",
+                    current_price: 99,
+                    original_price: 199,
+                    stock_status: "Y",
+                    available_colors: ["COL03"],
+                    available_sizes: ["SMA002"],
+                    sales_count: 55,
+                    evaluation_count: 8,
+                    score: 4.2,
+                    last_updated: "2025-06-14T08:45:00Z",
+                    last_price_change: "2025-06-11T14:30:00Z",
+                    last_change_percentage: -50.3
+                },
+                {
+                    product_code: "469258",
+                    name_zh: "UT NY POP ART印花短袖T恤凯斯哈林",
+                    main_pic: "/hmall/test/u0000000061994/main/first/561/1.jpg",
+                    current_price: 59,
+                    original_price: 99,
+                    stock_status: "N",
+                    available_colors: ["COL09"],
+                    available_sizes: ["SMA003"],
+                    sales_count: 1737,
+                    evaluation_count: 23,
+                    score: 5.0,
+                    last_updated: "2025-06-14T07:20:00Z",
+                    last_price_change: "2025-06-10T16:10:00Z",
+                    last_change_percentage: -40.4
+                }
+            ];
+            renderProducts();
+        }
+
+        let currentViewMode = 'grid';
+
+        function renderProducts() {
+            const container = document.getElementById('products-container');
+            container.className = currentViewMode === 'grid' ? 'grid-container' : 'list-container';
+
+            const productsToRender = realProducts.length > 0 ? realProducts : mockProducts;
+            container.innerHTML = productsToRender.map(product =>
+                components.createProductCard(product, currentViewMode)
+            ).join('');
+        }
+
+        function setupEventListeners() {
+            document.getElementById('grid-view-btn').addEventListener('click', () => {
+                currentViewMode = 'grid';
+                document.getElementById('grid-view-btn').className = 'btn btn-primary';
+                document.getElementById('list-view-btn').className = 'btn btn-secondary';
+                renderProducts();
+            });
+
+            document.getElementById('list-view-btn').addEventListener('click', () => {
+                currentViewMode = 'list';
+                document.getElementById('list-view-btn').className = 'btn btn-primary';
+                document.getElementById('grid-view-btn').className = 'btn btn-secondary';
+                renderProducts();
+            });
+
+            // 商品卡片点击事件
+            document.addEventListener('click', (e) => {
+                const productCard = e.target.closest('.product-card, .product-list-item');
+                if (productCard) {
+                    const productCode = productCard.dataset.productCode;
+                    alert(`点击了商品: ${productCode}`);
+                }
+            });
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', async () => {
+            setupEventListeners();
+            await loadRealProducts();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+{
+  "name": "u-tracker",
+  "version": "1.0.0",
+  "description": "优衣库商品价格监控系统 - Uniqlo Price Tracker",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "start:initial": "node index.js --initial-run",
+    "run-once": "node index.js --run-once",
+    "report": "node index.js --report",
+    "server": "node server.js",
+    "dev": "concurrently \"npm run server\" \"cd frontend && node server.js\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "uniqlo",
+    "price-tracker",
+    "scraper",
+    "nodejs",
+    "sqlite",
+    "cron"
+  ],
+  "author": "Sam",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.10.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "node-cron": "^4.1.0",
+    "sqlite3": "^5.1.7",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
