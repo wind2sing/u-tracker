@@ -603,13 +603,17 @@ class DashboardPage {
     }
 
     // 显示加载状态
-    utils.showLoading('正在启动全量数据抓取...');
+    if (window.app) {
+      window.app.showLoading('正在启动全量数据抓取...');
+    }
 
     try {
       console.log('🚀 触发手动抓取', options);
       const result = await api.triggerScraping(options);
 
-      utils.hideLoading();
+      if (window.app) {
+        window.app.hideLoading();
+      }
 
       if (result.success) {
         // 显示成功消息
@@ -626,7 +630,9 @@ class DashboardPage {
         throw new Error(result.message || '启动抓取失败');
       }
     } catch (error) {
-      utils.hideLoading();
+      if (window.app) {
+        window.app.hideLoading();
+      }
       console.error('手动抓取失败:', error);
 
       // 显示错误消息
