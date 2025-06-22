@@ -796,10 +796,10 @@ class ApiServer {
                 ph.score,
                 ph.recorded_at as last_updated,
                 (
-                    SELECT pa.created_at
-                    FROM price_alerts pa
-                    WHERE pa.product_code = p.product_code
-                    ORDER BY pa.created_at DESC
+                    SELECT ph2.recorded_at
+                    FROM price_history ph2
+                    WHERE ph2.product_code = p.product_code
+                    ORDER BY ph2.recorded_at DESC
                     LIMIT 1
                 ) as last_price_change,
                 (
@@ -873,10 +873,10 @@ class ApiServer {
                 ph.score,
                 ph.recorded_at as last_updated,
                 (
-                    SELECT pa.created_at
-                    FROM price_alerts pa
-                    WHERE pa.product_code = p.product_code
-                    ORDER BY pa.created_at DESC
+                    SELECT ph2.recorded_at
+                    FROM price_history ph2
+                    WHERE ph2.product_code = p.product_code
+                    ORDER BY ph2.recorded_at DESC
                     LIMIT 1
                 ) as last_price_change,
                 (

@@ -267,7 +267,7 @@ class ProductsPage {
                 <option value="updated_at:desc" ${this.filters.sortBy === 'updated_at' && this.filters.sortOrder === 'desc' ? 'selected' : ''}>最近更新</option>
                 <option value="current_price:asc" ${this.filters.sortBy === 'current_price' && this.filters.sortOrder === 'asc' ? 'selected' : ''}>价格从低到高</option>
                 <option value="current_price:desc" ${this.filters.sortBy === 'current_price' && this.filters.sortOrder === 'desc' ? 'selected' : ''}>价格从高到低</option>
-                <option value="last_price_change:desc" ${this.filters.sortBy === 'last_price_change' && this.filters.sortOrder === 'desc' ? 'selected' : ''}>降价时间</option>
+                <option value="last_price_change:desc" ${this.filters.sortBy === 'last_price_change' && this.filters.sortOrder === 'desc' ? 'selected' : ''}>价格更新时间</option>
                 <option value="discount_percentage:desc" ${this.filters.sortBy === 'discount_percentage' && this.filters.sortOrder === 'desc' ? 'selected' : ''}>折扣力度</option>
                 <option value="name_zh:asc" ${this.filters.sortBy === 'name_zh' && this.filters.sortOrder === 'asc' ? 'selected' : ''}>名称A-Z</option>
                 <option value="sales_count:desc" ${this.filters.sortBy === 'sales_count' && this.filters.sortOrder === 'desc' ? 'selected' : ''}>销量最高</option>
