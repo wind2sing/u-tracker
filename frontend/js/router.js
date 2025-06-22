@@ -5,7 +5,8 @@ class Router {
     this.routes = {};
     this.currentRoute = null;
     this.defaultRoute = '/';
-    
+    this.scrollPositions = {}; // 存储各页面的滚动位置
+
     // Initialize router
     this.init();
   }
@@ -42,6 +43,11 @@ class Router {
   async handleRouteChange() {
     const hash = (window.location.hash || '').substring(1) || this.defaultRoute;
     const [path, ...params] = hash.split('/');
+
+    // Save current scroll position before changing route
+    if (this.currentRoute) {
+      this.scrollPositions[this.currentRoute] = window.pageYOffset || document.documentElement.scrollTop;
+    }
 
     // Update current route
     this.currentRoute = hash;
@@ -105,8 +111,8 @@ class Router {
       // Execute route handler
       await handler(params);
 
-      // Scroll to top after page content is loaded
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Handle scroll position after page content is loaded
+      this.handleScrollPosition();
 
     } catch (error) {
       console.error('Route handler error:', error);
@@ -122,11 +128,27 @@ class Router {
     utils.$$('.nav-link').forEach(link => {
       link.classList.remove('active');
     });
-    
+
     // Add active class to current nav link
     const activeLink = utils.$(`[data-route="${currentPath}"]`);
     if (activeLink) {
       activeLink.classList.add('active');
+    }
+  }
+
+  handleScrollPosition() {
+    const currentRoute = this.currentRoute;
+    const savedPosition = this.scrollPositions[currentRoute];
+
+    // 如果是商品列表页面且有保存的滚动位置，恢复位置
+    if (currentRoute === 'products' && savedPosition !== undefined) {
+      // 使用 setTimeout 确保页面内容已完全渲染
+      setTimeout(() => {
+        window.scrollTo({ top: savedPosition, behavior: 'smooth' });
+      }, 100);
+    } else {
+      // 其他页面直接跳转到顶部（无动画）
+      window.scrollTo(0, 0);
     }
   }
 
