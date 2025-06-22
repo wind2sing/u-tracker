@@ -136,6 +136,135 @@ class ApiServer {
             }
         });
 
+        // 获取优衣库官方商品详细信息（SPU数据）
+        this.app.get('/api/products/:code/official-spu', async (req, res) => {
+            try {
+                const { code } = req.params;
+                const officialCode = await this.convertToOfficialCode(code);
+
+                console.log(`Fetching official SPU data for: ${code} -> ${officialCode}`);
+
+                const spuData = await this.fetchUniqloSPU(officialCode);
+                res.json(spuData);
+            } catch (error) {
+                console.error('Error fetching official SPU data:', error);
+                res.status(500).json({ error: 'Failed to fetch official product data' });
+            }
+        });
+
+        // 获取优衣库官方商品图片信息
+        this.app.get('/api/products/:code/official-images', async (req, res) => {
+            try {
+                const { code } = req.params;
+                const officialCode = await this.convertToOfficialCode(code);
+
+                console.log(`Fetching official images data for: ${code} -> ${officialCode}`);
+
+                const imagesData = await this.fetchUniqloImages(officialCode);
+                res.json(imagesData);
+            } catch (error) {
+                console.error('Error fetching official images data:', error);
+                res.status(500).json({ error: 'Failed to fetch official images data' });
+            }
+        });
+
+        // 获取完整的官方商品信息（SPU + 图片）
+        this.app.get('/api/products/:code/official-detail', async (req, res) => {
+            try {
+                const { code } = req.params;
+                const officialCode = await this.convertToOfficialCode(code);
+
+                console.log(`Fetching complete official data for: ${code} -> ${officialCode}`);
+
+                // 并行获取SPU和图片数据
+                const [spuData, imagesData] = await Promise.allSettled([
+                    this.fetchUniqloSPU(officialCode),
+                    this.fetchUniqloImages(officialCode)
+                ]);
+
+                const result = {
+                    productCode: code,
+                    officialCode: officialCode,
+                    spu: spuData.status === 'fulfilled' ? spuData.value : null,
+                    images: imagesData.status === 'fulfilled' ? imagesData.value : null,
+                    errors: {
+                        spu: spuData.status === 'rejected' ? spuData.reason.message : null,
+                        images: imagesData.status === 'rejected' ? imagesData.reason.message : null
+                    }
+                };
+
+                res.json(result);
+            } catch (error) {
+                console.error('Error fetching complete official data:', error);
+                res.status(500).json({ error: 'Failed to fetch complete official data' });
+            }
+        });
+
+        // 获取商品库存信息
+        this.app.get('/api/products/:code/stock', async (req, res) => {
+            try {
+                const { code } = req.params;
+                const officialCode = await this.convertToOfficialCode(code);
+
+                console.log(`Fetching stock for: ${code} -> ${officialCode}`);
+
+                const stockData = await this.fetchUniqloStock(officialCode);
+
+                res.json({
+                    productCode: code,
+                    officialCode: officialCode,
+                    stock: stockData,
+                    success: true
+                });
+            } catch (error) {
+                console.error('Error fetching stock:', error);
+                res.status(500).json({
+                    error: 'Failed to fetch stock information',
+                    productCode: req.params.code
+                });
+            }
+        });
+
+        // 更新商品库存状态
+        this.app.post('/api/products/:code/update-stock', async (req, res) => {
+            try {
+                const { code } = req.params;
+                const officialCode = await this.convertToOfficialCode(code);
+
+                console.log(`Updating stock status for: ${code} -> ${officialCode}`);
+
+                // 获取真实库存数据
+                const stockData = await this.fetchUniqloStock(officialCode);
+
+                // 判断是否有库存
+                const hasStock = stockData.totalStock > 0;
+                const newStockStatus = hasStock ? 'Y' : 'N';
+
+                // 更新数据库中的库存状态
+                await this.db.run(
+                    'UPDATE price_history SET stock_status = ? WHERE product_code = ? AND id = (SELECT MAX(id) FROM price_history WHERE product_code = ?)',
+                    [newStockStatus, code, code]
+                );
+
+                console.log(`Updated stock status for ${code}: ${newStockStatus} (total stock: ${stockData.totalStock})`);
+
+                res.json({
+                    productCode: code,
+                    officialCode: officialCode,
+                    oldStockStatus: 'unknown',
+                    newStockStatus: newStockStatus,
+                    totalStock: stockData.totalStock,
+                    success: true
+                });
+            } catch (error) {
+                console.error('Error updating stock status:', error);
+                res.status(500).json({
+                    error: 'Failed to update stock status',
+                    productCode: req.params.code
+                });
+            }
+        });
+
         // 获取商品价格历史
         this.app.get('/api/products/:code/price-history', async (req, res) => {
             try {
@@ -153,26 +282,105 @@ class ApiServer {
         // 获取价格警报
         this.app.get('/api/alerts', async (req, res) => {
             try {
-                const { hours = 24, type = '' } = req.query;
+                const {
+                    hours = 24,
+                    type = '',
+                    search = '',
+                    gender = '',
+                    page = 1,
+                    limit = 20,
+                    sortBy = 'created_at',
+                    sortOrder = 'desc'
+                } = req.query;
 
-                let alerts;
-                if (type === 'price_drop') {
-                    alerts = await this.priceTracker.getBiggestPriceDrops(1, 50);
-                } else if (type === 'back_in_stock') {
-                    alerts = await this.priceTracker.getProductsBackInStock(7);
-                } else {
-                    alerts = await this.priceTracker.getRecentAlerts(parseInt(hours));
+
+
+                // 始终使用包含性别信息的查询
+                let alerts = await this.getAlertsWithGender(parseInt(hours), type);
+
+                // 应用搜索和筛选
+                let filteredAlerts = alerts;
+
+                // 搜索筛选
+                if (search) {
+                    const searchLower = search.toLowerCase();
+                    filteredAlerts = filteredAlerts.filter(alert =>
+                        (alert.name_zh && alert.name_zh.toLowerCase().includes(searchLower)) ||
+                        (alert.product_code && alert.product_code.toLowerCase().includes(searchLower))
+                    );
                 }
 
+                // 性别筛选
+                if (gender) {
+                    filteredAlerts = filteredAlerts.filter(alert => {
+                        if (!alert.gender) return false;
+
+                        if (gender === '男装') {
+                            return alert.gender.includes('男装') || alert.gender.includes('男款') || alert.gender.includes('男女同款');
+                        } else if (gender === '女装') {
+                            return alert.gender.includes('女装') || alert.gender.includes('男女同款');
+                        } else if (gender === '童装') {
+                            return alert.gender.includes('童');
+                        } else if (gender === '男女同款') {
+                            return alert.gender.includes('男女同款');
+                        } else if (gender === '男童') {
+                            return alert.gender.includes('男童');
+                        } else if (gender === '女童') {
+                            return alert.gender.includes('女童');
+                        } else if (gender === '婴幼儿') {
+                            return alert.gender.includes('婴幼儿') || alert.gender.includes('宝宝');
+                        } else {
+                            return alert.gender === gender;
+                        }
+                    });
+                }
+
+                // 排序
+                filteredAlerts.sort((a, b) => {
+                    let aValue = a[sortBy];
+                    let bValue = b[sortBy];
+
+                    if (sortBy === 'created_at') {
+                        aValue = new Date(aValue);
+                        bValue = new Date(bValue);
+                    } else if (sortBy === 'change_percentage') {
+                        aValue = parseFloat(aValue) || 0;
+                        bValue = parseFloat(bValue) || 0;
+                    }
+
+                    if (sortOrder === 'desc') {
+                        return bValue > aValue ? 1 : -1;
+                    } else {
+                        return aValue > bValue ? 1 : -1;
+                    }
+                });
+
+                // 分页
+                const pageNum = parseInt(page);
+                const limitNum = parseInt(limit);
+                const offset = (pageNum - 1) * limitNum;
+                const paginatedAlerts = filteredAlerts.slice(offset, offset + limitNum);
+
                 // Format alerts to include proper image URLs and local timezone
-                const formattedAlerts = alerts.map(alert => ({
+                const formattedAlerts = paginatedAlerts.map(alert => ({
                     ...alert,
                     main_pic: alert.main_pic ? `https://www.uniqlo.cn${alert.main_pic}` : null,
                     // 将UTC时间转换为本地时区时间
                     created_at: this.convertToLocalTime(alert.created_at)
                 }));
 
-                res.json(formattedAlerts);
+                // 返回分页格式
+                const response = {
+                    alerts: formattedAlerts,
+                    pagination: {
+                        page: pageNum,
+                        limit: limitNum,
+                        total: filteredAlerts.length,
+                        pages: Math.ceil(filteredAlerts.length / limitNum)
+                    }
+                };
+
+                res.json(response);
             } catch (error) {
                 console.error('Error fetching alerts:', error);
                 res.status(500).json({ error: 'Internal server error' });
@@ -329,6 +537,27 @@ class ApiServer {
             }
         });
 
+        // 获取商品活跃度统计
+        this.app.get('/api/product-activity', async (req, res) => {
+            try {
+                const stats = await this.db.getProductActivityStats();
+                const inactiveProducts = await this.db.getInactiveProducts(10);
+
+                res.json({
+                    statistics: stats,
+                    recentInactiveProducts: inactiveProducts.map(product => ({
+                        ...product,
+                        main_pic: product.main_pic ? `https://www.uniqlo.cn${product.main_pic}` : null,
+                        last_seen_at: this.convertToLocalTime(product.last_seen_at),
+                        last_price_update: this.convertToLocalTime(product.last_price_update)
+                    }))
+                });
+            } catch (error) {
+                console.error('Error getting product activity:', error);
+                res.status(500).json({ error: 'Failed to get product activity' });
+            }
+        });
+
         // SPA路由支持 - 对于非API和非静态文件请求，返回index.html
         this.app.use((req, res, next) => {
             // 如果请求的是API路径，继续到下一个中间件（会返回404）
@@ -347,6 +576,46 @@ class ApiServer {
         });
     }
 
+    // 获取包含性别信息的警报
+    async getAlertsWithGender(hours = 24, type = '') {
+        let alerts;
+        if (type === 'price_drop') {
+            // 获取降价警报并关联商品性别信息
+            const sql = `
+                SELECT pa.*, p.gender, p.name_zh, p.main_pic
+                FROM price_alerts pa
+                LEFT JOIN products p ON pa.product_code = p.product_code
+                WHERE pa.alert_type = 'price_drop'
+                AND pa.created_at >= datetime('now', '-${hours} hours')
+                ORDER BY pa.created_at DESC
+                LIMIT 50
+            `;
+            alerts = await this.db.all(sql);
+        } else if (type === 'back_in_stock') {
+            // 获取补货警报并关联商品性别信息
+            const sql = `
+                SELECT pa.*, p.gender, p.name_zh, p.main_pic
+                FROM price_alerts pa
+                LEFT JOIN products p ON pa.product_code = p.product_code
+                WHERE pa.alert_type = 'back_in_stock'
+                AND pa.created_at >= datetime('now', '-7 days')
+                ORDER BY pa.created_at DESC
+            `;
+            alerts = await this.db.all(sql);
+        } else {
+            // 获取所有警报并关联商品性别信息
+            const sql = `
+                SELECT pa.*, p.gender, p.name_zh, p.main_pic
+                FROM price_alerts pa
+                LEFT JOIN products p ON pa.product_code = p.product_code
+                WHERE pa.created_at >= datetime('now', '-${hours} hours')
+                ORDER BY pa.created_at DESC
+            `;
+            alerts = await this.db.all(sql);
+        }
+        return alerts;
+    }
+
     async getProducts(options) {
         const {
             page,
@@ -362,7 +631,8 @@ class ApiServer {
             inStock,
             colors,
             sizes,
-            priceLevel
+            priceLevel,
+            showInactive
         } = options;
 
         const offset = (page - 1) * limit;
@@ -414,11 +684,26 @@ class ApiServer {
             params.push(season);
         }
 
-        // 库存筛选
-        if (inStock === 'true') {
-            whereConditions.push('ph.stock_status = "Y"');
-        } else if (inStock === 'false') {
+        // 商品库存状态筛选
+        console.log(`API筛选参数 inStock: ${inStock}`);
+        if (inStock === 'inactive') {
+            // 仅显示非活跃商品（长期未出现在搜索结果中）
+            whereConditions.push('p.is_active = 0');
+            console.log('添加筛选条件: 仅非活跃商品');
+        } else if (inStock === 'out_of_stock') {
+            // 仅显示无库存商品
             whereConditions.push('ph.stock_status = "N"');
+            whereConditions.push('p.is_active = 1'); // 但仍然是活跃商品
+            console.log('添加筛选条件: 仅无库存商品');
+        } else if (inStock === 'all') {
+            // 显示全部商品（有库存、无库存、非活跃）
+            // 不添加筛选条件
+            console.log('显示全部商品，不添加任何筛选');
+        } else {
+            // 默认只显示有库存的活跃商品
+            whereConditions.push('p.is_active = 1');
+            whereConditions.push('ph.stock_status = "Y"');
+            console.log('添加筛选条件: 仅有库存的活跃商品');
         }
 
         // 价格范围筛选
@@ -531,10 +816,11 @@ class ApiServer {
                 END as discount_percentage
             FROM products p
             LEFT JOIN price_history ph ON p.product_code = ph.product_code
-            WHERE ph.id IN (
-                SELECT MAX(id) FROM price_history
-                GROUP BY product_code
-            )
+                AND ph.id = (
+                    SELECT MAX(id) FROM price_history ph2
+                    WHERE ph2.product_code = p.product_code
+                )
+            WHERE 1=1
             ${whereClause}
             ORDER BY ${orderField} ${orderDirection}
             LIMIT ? OFFSET ?
@@ -549,10 +835,11 @@ class ApiServer {
             SELECT COUNT(*) as total
             FROM products p
             LEFT JOIN price_history ph ON p.product_code = ph.product_code
-            WHERE ph.id IN (
-                SELECT MAX(id) FROM price_history
-                GROUP BY product_code
-            )
+                AND ph.id = (
+                    SELECT MAX(id) FROM price_history ph2
+                    WHERE ph2.product_code = p.product_code
+                )
+            WHERE 1=1
             ${whereClause}
         `;
 
@@ -777,6 +1064,149 @@ class ApiServer {
         } catch (error) {
             console.error('Error converting time to local:', error);
             return utcTimeString;
+        }
+    }
+
+    // 转换商品代码为优衣库官方格式
+    async convertToOfficialCode(code) {
+        // 如果已经是官方格式（以u开头），直接返回
+        if (code.startsWith('u')) {
+            return code;
+        }
+
+        try {
+            // 从数据库中查询商品的main_pic，提取真实的产品ID
+            const product = await this.db.get(
+                'SELECT main_pic FROM products WHERE product_code = ?',
+                [code]
+            );
+
+            if (product && product.main_pic) {
+                // 从main_pic URL中提取产品ID
+                // 例如: /hmall/test/u0000000060451/main/first/561/1.jpg -> u0000000060451
+                const match = product.main_pic.match(/\/u(\d+)\//);
+                if (match) {
+                    const realProductCode = `u${match[1]}`;
+                    console.log(`Converted ${code} to official code: ${realProductCode}`);
+                    return realProductCode;
+                }
+            }
+
+            console.warn(`Could not extract official code from main_pic for ${code}, using fallback`);
+        } catch (error) {
+            console.error('Error converting to official code:', error);
+        }
+
+        // 回退方案：使用简单的转换逻辑
+        return `u${code.padStart(12, '0')}`;
+    }
+
+    // 获取优衣库SPU数据
+    async fetchUniqloSPU(officialCode) {
+        const axios = require('axios');
+
+        const url = `https://www.uniqlo.cn/data/products/spu/zh_CN/${officialCode}.json`;
+        const headers = {
+            'accept': '*/*',
+            'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'sec-ch-ua': '"Google Chrome";v="137", "Chromium";v="137", "Not/A)Brand";v="24"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-origin',
+            'Referer': `https://www.uniqlo.cn/product-detail.html?productCode=${officialCode}`,
+            'Referrer-Policy': 'strict-origin-when-cross-origin'
+        };
+
+        try {
+            console.log(`Fetching SPU data from: ${url}`);
+            const response = await axios.get(url, {
+                headers,
+                timeout: 10000
+            });
+
+            return response.data;
+        } catch (error) {
+            console.error(`Failed to fetch SPU data for ${officialCode}:`, error.message);
+            throw new Error(`SPU data not available: ${error.message}`);
+        }
+    }
+
+    // 获取优衣库商品图片数据
+    async fetchUniqloImages(officialCode) {
+        const axios = require('axios');
+
+        const url = `https://www.uniqlo.cn/data/products/zh_CN/${officialCode}.json`;
+        const headers = {
+            'accept': '*/*',
+            'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'sec-ch-ua': '"Google Chrome";v="137", "Chromium";v="137", "Not/A)Brand";v="24"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-origin',
+            'Referer': `https://www.uniqlo.cn/product-detail.html?productCode=${officialCode}`,
+            'Referrer-Policy': 'strict-origin-when-cross-origin'
+        };
+
+        try {
+            console.log(`Fetching images data from: ${url}`);
+            const response = await axios.get(url, {
+                headers,
+                timeout: 10000
+            });
+
+            return response.data;
+        } catch (error) {
+            console.error(`Failed to fetch images data for ${officialCode}:`, error.message);
+            throw new Error(`Images data not available: ${error.message}`);
+        }
+    }
+
+    // 获取优衣库商品库存数据
+    async fetchUniqloStock(officialCode) {
+        const axios = require('axios');
+
+        const url = 'https://d.uniqlo.cn/p/stock/stock/query/zh_CN';
+        const headers = {
+            'accept': 'application/json',
+            'accept-language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
+            'authorization': '',
+            'content-type': 'application/json',
+            'priority': 'u=1, i',
+            'sec-ch-ua': '"Google Chrome";v="137", "Chromium";v="137", "Not/A)Brand";v="24"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-site',
+            'Referer': 'https://www.uniqlo.cn/',
+            'Referrer-Policy': 'strict-origin-when-cross-origin'
+        };
+
+        const requestBody = {
+            distribution: 'EXPRESS',
+            productCode: officialCode,
+            type: 'DETAIL'
+        };
+
+        try {
+            console.log(`Fetching stock data for: ${officialCode}`);
+            const response = await axios.post(url, requestBody, {
+                headers,
+                timeout: 10000
+            });
+
+            if (response.data && response.data.success && response.data.resp && response.data.resp.length > 0) {
+                return response.data.resp[0];
+            } else {
+                throw new Error('No stock data in response');
+            }
+        } catch (error) {
+            console.error(`Failed to fetch stock data for ${officialCode}:`, error.message);
+            throw new Error(`Stock data not available: ${error.message}`);
         }
     }
 

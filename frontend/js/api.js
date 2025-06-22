@@ -79,6 +79,22 @@ class ApiService {
     return this.request(`/products/${code}`);
   }
 
+  async getProductOfficialDetail(code) {
+    return this.request(`/products/${code}/official-detail`);
+  }
+
+  async getProductStock(code) {
+    return this.request(`/products/${code}/stock`);
+  }
+
+  async getProductOfficialSPU(code) {
+    return this.request(`/products/${code}/official-spu`);
+  }
+
+  async getProductOfficialImages(code) {
+    return this.request(`/products/${code}/official-images`);
+  }
+
   async getPriceHistory(code, days = 30) {
     return this.request(`/products/${code}/price-history?days=${days}`);
   }

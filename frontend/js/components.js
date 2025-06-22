@@ -241,10 +241,19 @@ const createProductCard = (product, viewMode = 'grid') => {
             </div>
 
             <div class="flex-start">
-              <span class="chip ${product.stock_status === 'Y' ? 'chip-success' : 'chip-error'}">
-                <i class="fas fa-${product.stock_status === 'Y' ? 'check' : 'times'}"></i>
-                ${product.stock_status === 'Y' ? '有库存' : '缺货'}
-              </span>
+              ${(() => {
+                const hoursAgo = product.last_updated ? Math.round((new Date() - new Date(product.last_updated)) / (1000 * 60 * 60)) : null;
+                const isStale = hoursAgo && hoursAgo > 24;
+                const stockClass = product.stock_status === 'Y' ? 'chip-success' : 'chip-error';
+                const stockText = product.stock_status === 'Y' ? '有库存' : '缺货';
+
+                return `
+                  <span class="chip ${stockClass} ${isStale ? 'chip-warning' : ''}">
+                    <i class="fas fa-${product.stock_status === 'Y' ? 'check' : 'times'}"></i>
+                    ${stockText}${isStale ? ' (数据较旧)' : ''}
+                  </span>
+                `;
+              })()}
               ${product.sales_count ? `
                 <span class="text-sm text-secondary">销量: ${utils.formatNumber(product.sales_count)}</span>
               ` : ''}

@@ -10,7 +10,9 @@ class AlertsPage {
       alertType: '',
       hours: 24,
       sortBy: 'created_at',
-      sortOrder: 'desc'
+      sortOrder: 'desc',
+      search: '',
+      gender: ''
     };
     this.loading = false;
   }
@@ -24,6 +26,14 @@ class AlertsPage {
         <p class="page-subtitle">查看所有价格变动提醒</p>
       </div>
 
+      <!-- Search Bar -->
+      <div class="search-section">
+        <div class="search-input-wrapper">
+          <i class="fas fa-search search-icon"></i>
+          <input type="text" id="search-input" class="search-input" placeholder="搜索商品名称或编号..." value="${this.filters.search}">
+        </div>
+      </div>
+
       <!-- Filters -->
       <div class="alerts-filters">
         <div class="filter-row">
@@ -34,6 +44,20 @@ class AlertsPage {
               <option value="price_drop" ${this.filters.alertType === 'price_drop' ? 'selected' : ''}>降价警报</option>
               <option value="price_increase" ${this.filters.alertType === 'price_increase' ? 'selected' : ''}>涨价警报</option>
               <option value="stock_change" ${this.filters.alertType === 'stock_change' ? 'selected' : ''}>库存变化</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="gender-select">性别分类</label>
+            <select id="gender-select">
+              <option value="" ${this.filters.gender === '' ? 'selected' : ''}>全部性别</option>
+              <option value="男装" ${this.filters.gender === '男装' ? 'selected' : ''}>男装</option>
+              <option value="女装" ${this.filters.gender === '女装' ? 'selected' : ''}>女装</option>
+              <option value="男女同款" ${this.filters.gender === '男女同款' ? 'selected' : ''}>男女同款</option>
+              <option value="男童" ${this.filters.gender === '男童' ? 'selected' : ''}>男童</option>
+              <option value="女童" ${this.filters.gender === '女童' ? 'selected' : ''}>女童</option>
+              <option value="童装" ${this.filters.gender === '童装' ? 'selected' : ''}>童装</option>
+              <option value="婴幼儿" ${this.filters.gender === '婴幼儿' ? 'selected' : ''}>婴幼儿</option>
             </select>
           </div>
           
@@ -91,11 +115,36 @@ class AlertsPage {
   }
 
   bindEvents() {
+    // Search input
+    const searchInput = utils.$('#search-input');
+    if (searchInput) {
+      // 创建防抖搜索函数
+      this.debouncedSearch = utils.debounce(() => {
+        this.filters.page = 1;
+        this.loadAlerts();
+      }, 300);
+
+      utils.on(searchInput, 'input', (e) => {
+        this.filters.search = e.target.value;
+        this.debouncedSearch();
+      });
+    }
+
     // Alert type filter
     const alertTypeSelect = utils.$('#alert-type-select');
     if (alertTypeSelect) {
       utils.on(alertTypeSelect, 'change', (e) => {
         this.filters.alertType = e.target.value;
+        this.filters.page = 1;
+        this.loadAlerts();
+      });
+    }
+
+    // Gender filter
+    const genderSelect = utils.$('#gender-select');
+    if (genderSelect) {
+      utils.on(genderSelect, 'change', (e) => {
+        this.filters.gender = e.target.value;
         this.filters.page = 1;
         this.loadAlerts();
       });
@@ -218,16 +267,24 @@ class AlertsPage {
       alertType: '',
       hours: 24,
       sortBy: 'created_at',
-      sortOrder: 'desc'
+      sortOrder: 'desc',
+      search: '',
+      gender: ''
     };
 
     // Update form elements
+    const searchInput = utils.$('#search-input');
+    if (searchInput) searchInput.value = '';
+
     const alertTypeSelect = utils.$('#alert-type-select');
     if (alertTypeSelect) alertTypeSelect.value = '';
-    
+
+    const genderSelect = utils.$('#gender-select');
+    if (genderSelect) genderSelect.value = '';
+
     const timeRangeSelect = utils.$('#time-range-select');
     if (timeRangeSelect) timeRangeSelect.value = '24';
-    
+
     const sortSelect = utils.$('#sort-select');
     if (sortSelect) sortSelect.value = 'created_at:desc';
 
@@ -261,8 +318,8 @@ class AlertsPage {
   }
 
   createEmptyState() {
-    const hasFilters = this.filters.alertType || this.filters.hours !== 24;
-    
+    const hasFilters = this.filters.alertType || this.filters.hours !== 24 || this.filters.search || this.filters.gender;
+
     return `
       <div class="empty-state">
         <div class="empty-state-icon">

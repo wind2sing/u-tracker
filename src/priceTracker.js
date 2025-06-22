@@ -56,15 +56,19 @@ class PriceTracker {
             }
         }
 
+        // 标记长期未出现的商品为非活跃状态
+        const inactiveCount = await this.db.markInactiveProducts(48); // 48小时未出现则标记为非活跃
+
         const summary = {
             totalProcessed: products.length,
             newProducts,
             priceChanges,
-            alerts
+            alerts,
+            inactiveProducts: inactiveCount
         };
 
-        console.log(`处理完成: 总计 ${summary.totalProcessed} 个商品, 新商品 ${summary.newProducts} 个, 价格变化 ${summary.priceChanges} 个`);
-        
+        console.log(`处理完成: 总计 ${summary.totalProcessed} 个商品, 新商品 ${summary.newProducts} 个, 价格变化 ${summary.priceChanges} 个, 标记非活跃商品 ${inactiveCount} 个`);
+
         return summary;
     }
 

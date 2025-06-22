@@ -9,6 +9,9 @@ class ProductDetailPage {
     this.officialData = null;
     this.selectedColor = null;
     this.selectedSize = null;
+    this.skuData = null; // 存储SKU详细数据
+    this.colorSizeMatrix = {}; // 颜色-尺码可用性矩阵
+    this.availableImages = {}; // 不同颜色的图片数据
   }
 
   async render(params) {
@@ -91,46 +94,145 @@ class ProductDetailPage {
   }
 
   async loadOfficialProductData(code) {
-    // For now, we'll skip loading official data due to CORS restrictions
-    // In a production environment, this would be handled by a backend proxy
-    console.log('Official data loading skipped due to CORS restrictions');
-    return null;
-
-    /*
-    // This code would work if we had a backend proxy
-    const officialCode = this.convertToOfficialCode(code);
-
+    // 加载官方详细数据，包括SKU信息和库存信息
     try {
-      // Try to load official SPU data through backend proxy
-      const spuResponse = await fetch(`/api/proxy/uniqlo/spu/${officialCode}`);
-      if (!spuResponse.ok) throw new Error('SPU data not available');
-      const spuData = await spuResponse.json();
+      console.log('Loading official data for product:', code);
 
-      // Try to load official product images data through backend proxy
-      const imagesResponse = await fetch(`/api/proxy/uniqlo/images/${officialCode}`);
-      if (!imagesResponse.ok) throw new Error('Images data not available');
-      const imagesData = await imagesResponse.json();
+      // 并行获取官方数据和库存数据
+      const [officialData, stockData] = await Promise.allSettled([
+        api.getProductOfficialDetail(code),
+        api.getProductStock(code)
+      ]);
 
-      return {
-        spu: spuData,
-        images: imagesData
-      };
+      let result = null;
+
+      if (officialData.status === 'fulfilled' && officialData.value && (officialData.value.spu || officialData.value.images)) {
+        console.log('Official data loaded successfully');
+
+        result = {
+          spu: officialData.value.spu,
+          images: officialData.value.images,
+          productCode: officialData.value.productCode,
+          officialCode: officialData.value.officialCode,
+          colorList: officialData.value.images?.colorList || officialData.value.spu?.colorList,
+          summary: officialData.value.spu?.summary,
+          rows: officialData.value.spu?.rows
+        };
+
+        // 处理SKU数据
+        if (officialData.value.spu) {
+          this.processSkuData(officialData.value.spu);
+
+          // 如果有colorList，也要处理
+          if (officialData.value.spu.colorList) {
+            this.officialData = {
+              ...this.officialData,
+              colorList: officialData.value.spu.colorList
+            };
+          }
+        }
+      } else {
+        console.warn('No official data available, errors:', officialData.reason);
+      }
+
+      // 处理库存数据
+      if (stockData.status === 'fulfilled' && stockData.value && stockData.value.stock) {
+        console.log('Stock data loaded successfully');
+        this.processStockData(stockData.value.stock);
+
+        if (result) {
+          result.stock = stockData.value.stock;
+        }
+      } else {
+        console.warn('No stock data available, errors:', stockData.reason);
+      }
+
+      return result;
+
     } catch (error) {
-      console.warn('Could not load official data:', error);
+      console.error('Could not load official data:', error);
       return null;
     }
-    */
   }
 
-  convertToOfficialCode(code) {
-    // Convert product code to official format (e.g., "479308" -> "u0000000060451")
-    // This is a placeholder - we'd need to implement proper mapping
-    if (code.startsWith('u')) {
-      return code;
-    }
-    // For now, return as-is and let the API call fail gracefully
-    return `u${code.padStart(12, '0')}`;
+  getMockSkuData(code) {
+    // 不再使用模拟数据，直接返回null让系统使用存储的数据
+    console.log('Mock SKU data disabled, using stored product data');
+    return null;
   }
+
+  processSkuData(skuData) {
+    if (!skuData) {
+      console.warn('No SKU data provided');
+      return;
+    }
+
+    // 构建SKU映射表（用于后续与库存数据关联）
+    this.skuMapping = {};
+
+    // 处理SKU数据 - 检查不同的数据结构
+    let rows = [];
+    if (skuData.rows) {
+      rows = skuData.rows;
+    } else if (Array.isArray(skuData)) {
+      rows = skuData;
+    }
+
+    if (rows.length === 0) {
+      console.warn('No SKU rows found');
+      return;
+    }
+
+    // 构建SKU映射表，包含所有启用的SKU
+    rows.forEach(sku => {
+      const colorNo = sku.colorNo;
+      const size = sku.size;
+      const isEnabled = sku.enabledFlag === 'Y';
+      const skuCode = sku.productId || sku.skuCode; // 使用productId作为SKU代码
+
+      if (isEnabled && skuCode) {
+        if (!this.skuMapping[colorNo]) {
+          this.skuMapping[colorNo] = {};
+        }
+        this.skuMapping[colorNo][size] = skuCode;
+      }
+    });
+
+    // 处理图片数据
+    if (skuData.images) {
+      this.availableImages = skuData.images;
+    }
+
+    console.log('SKU mapping built:', this.skuMapping);
+  }
+
+  processStockData(stockData) {
+    if (!stockData || !stockData.skuStocks) {
+      console.warn('No stock data provided');
+      return;
+    }
+
+    // 构建颜色-尺码库存矩阵
+    this.colorSizeMatrix = {};
+
+    // 遍历SKU映射表，检查每个SKU的库存
+    Object.keys(this.skuMapping).forEach(colorNo => {
+      Object.keys(this.skuMapping[colorNo]).forEach(size => {
+        const skuCode = this.skuMapping[colorNo][size];
+        const stockCount = stockData.skuStocks[skuCode] || 0;
+        const hasStock = stockCount > 0;
+
+        if (!this.colorSizeMatrix[colorNo]) {
+          this.colorSizeMatrix[colorNo] = {};
+        }
+        this.colorSizeMatrix[colorNo][size] = hasStock;
+      });
+    });
+
+    console.log('Color-Size Matrix built with stock data:', this.colorSizeMatrix);
+  }
+
+
 
   renderProduct() {
     const container = utils.$('#product-detail-container');
@@ -312,20 +414,67 @@ class ProductDetailPage {
   renderColorSelection() {
     let colors = [];
 
-    // Use our stored colors data
-    if (this.product.available_colors && this.product.available_colors.length > 0) {
+    // 优先使用SKU数据中的颜色信息
+    if (this.officialData && this.officialData.colorList) {
+      colors = this.officialData.colorList.map(color => ({
+        styleText: this.parseColorText(color.styleText),
+        colorNo: color.colorNo,
+        chipPic: color.chipPic
+      }));
+    } else if (this.officialData && this.officialData.images && this.officialData.images.colorList) {
+      colors = this.officialData.images.colorList.map(color => ({
+        styleText: this.parseColorText(color.styleText),
+        colorNo: color.colorNo,
+        chipPic: color.chipPic
+      }));
+    } else if (this.officialData && this.officialData.spu && this.officialData.spu.colorList) {
+      colors = this.officialData.spu.colorList.map(color => ({
+        styleText: this.parseColorText(color.styleText),
+        colorNo: color.colorNo,
+        chipPic: color.chipPic
+      }));
+    } else if (this.colorSizeMatrix && Object.keys(this.colorSizeMatrix).length > 0) {
+      // 从colorSizeMatrix中提取颜色信息
+      colors = Object.keys(this.colorSizeMatrix).map(colorNo => ({
+        styleText: colorNo, // 简单使用colorNo作为显示文本
+        colorNo: colorNo,
+        chipPic: null
+      }));
+    } else if (this.product.available_colors && this.product.available_colors.length > 0) {
+      // 回退到存储的颜色数据
       colors = this.product.available_colors.map(color => ({
         styleText: utils.translateColor(color),
         colorNo: color,
         chipPic: null
       }));
-      if (!this.selectedColor && colors.length > 0) {
-        this.selectedColor = colors[0].colorNo;
-      }
+    }
+
+    // 过滤掉没有库存的颜色
+    if (this.colorSizeMatrix && Object.keys(this.colorSizeMatrix).length > 0) {
+      colors = colors.filter(color => this.isColorAvailable(color.colorNo));
     }
 
     if (colors.length === 0) {
-      return '';
+      // 如果没有可用颜色，显示缺货提示
+      return `
+        <div class="color-selection">
+          <h4>颜色选择</h4>
+          <div class="out-of-stock-notice">
+            <p>😔 很抱歉，该商品目前所有颜色和尺码都已售罄</p>
+            <p>请关注补货信息或查看其他商品</p>
+          </div>
+        </div>
+      `;
+    }
+
+    // 初始化选中的颜色 - 确保总是有默认选中
+    if (colors.length > 0) {
+      // 如果当前选中的颜色不在可用颜色列表中，选择第一个可用颜色
+      const isCurrentColorAvailable = colors.some(c => c.colorNo === this.selectedColor);
+      if (!this.selectedColor || !isCurrentColorAvailable) {
+        this.selectedColor = colors[0].colorNo;
+        console.log('Default color selected:', this.selectedColor);
+      }
     }
 
     const selectedColorInfo = colors.find(c => c.colorNo === this.selectedColor) || colors[0];
@@ -334,37 +483,105 @@ class ProductDetailPage {
       <div class="color-selection">
         <h4>颜色: <span class="selected-color">${selectedColorInfo ? selectedColorInfo.styleText : '未选择'}</span></h4>
         <div class="color-options">
-          ${colors.map((color, index) => `
-            <div class="color-option ${color.colorNo === this.selectedColor ? 'selected' : ''}"
-                 data-color="${color.colorNo}"
-                 data-color-text="${color.styleText}"
-                 data-index="${index}">
-              <div class="color-swatch" style="background-color: ${this.getColorCode(color.styleText)};"></div>
-              <span>${color.styleText}</span>
-            </div>
-          `).join('')}
+          ${colors.map((color, index) => {
+            const isAvailable = this.isColorAvailable(color.colorNo);
+            return `
+              <div class="color-option ${color.colorNo === this.selectedColor ? 'selected' : ''} ${!isAvailable ? 'disabled' : ''}"
+                   data-color="${color.colorNo}"
+                   data-color-text="${color.styleText}"
+                   data-index="${index}"
+                   ${!isAvailable ? 'title="该颜色暂无库存"' : ''}>
+                ${color.chipPic ? `
+                  <div class="color-chip">
+                    <img src="https://www.uniqlo.cn${color.chipPic}" alt="${color.styleText}"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <div class="color-swatch" style="background-color: ${this.getColorCode(color.styleText)}; display: none;"></div>
+                  </div>
+                ` : `
+                  <div class="color-swatch" style="background-color: ${this.getColorCode(color.styleText)};"></div>
+                `}
+                <span class="color-name">${color.styleText}</span>
+                ${!isAvailable ? '<span class="unavailable-badge">缺货</span>' : ''}
+              </div>
+            `;
+          }).join('')}
         </div>
       </div>
     `;
   }
 
+  parseColorText(styleText) {
+    // 解析颜色文本，例如 "00 白色" -> "白色"
+    if (!styleText) return '';
+
+    const match = styleText.match(/^\d+\s+(.+)$/);
+    return match ? match[1] : styleText;
+  }
+
+  isColorAvailable(colorNo) {
+    // 检查颜色是否有任何可用的尺码
+    if (!this.colorSizeMatrix || !this.colorSizeMatrix[colorNo]) {
+      return true; // 如果没有SKU数据，默认可用
+    }
+
+    const sizes = this.colorSizeMatrix[colorNo];
+    return Object.values(sizes).some(available => available);
+  }
+
   selectColor(colorNo, colorText, index) {
-    // Update selected color
+    // 检查颜色是否可用
+    if (!this.isColorAvailable(colorNo)) {
+      console.warn('Color not available:', colorNo);
+      return;
+    }
+
+    // 更新选中的颜色
     this.selectedColor = colorNo;
 
-    // Update selected color display
+    // 更新颜色显示
     const selectedColorSpan = utils.$('.selected-color');
     if (selectedColorSpan) {
       selectedColorSpan.textContent = colorText;
     }
 
-    // Update active color option
+    // 更新颜色选项的选中状态
     const colorOptions = utils.$$('.color-option');
     colorOptions.forEach((option) => {
       option.classList.toggle('selected', option.dataset.color === colorNo);
     });
 
+    // 更新尺码选择的可用性
+    this.updateSizeAvailability();
+
+    // 更新商品图片（如果有不同颜色的图片）
+    this.updateProductImages(colorNo);
+
+    // 如果当前选中的尺码在新颜色下不可用，清除尺码选择
+    if (this.selectedSize && !this.isSizeAvailableForColor(this.selectedSize, colorNo)) {
+      this.clearSizeSelection();
+    }
+
     console.log('Color selected:', colorNo, colorText);
+  }
+
+  updateProductImages(colorNo) {
+    // 根据选中的颜色更新商品图片
+    // 这里可以实现根据颜色切换不同的商品图片
+    console.log('Updating images for color:', colorNo);
+  }
+
+  clearSizeSelection() {
+    this.selectedSize = null;
+
+    const selectedSizeSpan = utils.$('.selected-size');
+    if (selectedSizeSpan) {
+      selectedSizeSpan.textContent = '请选择';
+    }
+
+    const sizeOptions = utils.$$('.size-option');
+    sizeOptions.forEach(option => {
+      option.classList.remove('selected');
+    });
   }
 
   getColorCode(colorNo) {
@@ -428,59 +645,364 @@ class ProductDetailPage {
 
   renderSizeSelection() {
     let sizes = [];
-    let selectedSize = null;
 
-    // Use our stored sizes data
-    if (this.product.available_sizes && this.product.available_sizes.length > 0) {
+    // 优先使用SKU数据中的尺码信息
+    if (this.officialData && this.officialData.summary && this.officialData.summary.sizeList) {
+      sizes = this.officialData.summary.sizeList.map(sizeText => {
+        // 从 "165/84A/S" 中提取 "S"
+        const match = sizeText.match(/\/([^\/]+)$/);
+        return match ? match[1] : sizeText;
+      });
+    } else if (this.product.available_sizes && this.product.available_sizes.length > 0) {
       sizes = this.product.available_sizes;
     }
 
-    if (sizes.length === 0) {
-      return '';
+    // 过滤出有库存的尺码
+    if (this.colorSizeMatrix && this.selectedColor) {
+      const availableSizes = sizes.filter(size =>
+        this.isSizeAvailableForColor(size, this.selectedColor)
+      );
+
+      if (availableSizes.length === 0) {
+        return `
+          <div class="size-selection">
+            <h4>尺码选择</h4>
+            <div class="out-of-stock-notice">
+              <p>😔 很抱歉，该颜色下所有尺码都已售罄</p>
+              <p>请尝试选择其他颜色</p>
+            </div>
+          </div>
+        `;
+      }
+
+      sizes = availableSizes;
     }
+
+    if (sizes.length === 0) {
+      return `
+        <div class="size-selection">
+          <h4>尺码选择</h4>
+          <div class="out-of-stock-notice">
+            <p>😔 很抱歉，该商品目前所有尺码都已售罄</p>
+            <p>请关注补货信息或查看其他商品</p>
+          </div>
+        </div>
+      `;
+    }
+
+    // 去重并排序
+    sizes = [...new Set(sizes)];
+    sizes = this.sortSizes(sizes);
 
     return `
       <div class="size-selection">
-        <h4>尺码: <span class="selected-size">${selectedSize || '请选择'}</span></h4>
+        <h4>尺码: <span class="selected-size">${this.selectedSize ? this.getReadableSizeText(this.selectedSize) : '请选择'}</span></h4>
         <div class="size-options">
           ${sizes.map((size, index) => {
-            const translatedSize = utils.translateSize(size);
+            const isAvailable = this.isSizeAvailableForColor(size, this.selectedColor);
+            const readableSize = this.getReadableSizeText(size);
+            const detailedSize = this.getDetailedSizeText(size);
+
             return `
-              <button class="size-option"
+              <button class="size-option ${size === this.selectedSize ? 'selected' : ''} ${!isAvailable ? 'disabled' : ''}"
                       data-size="${size}"
-                      data-index="${index}">
-                ${translatedSize}
+                      data-index="${index}"
+                      ${!isAvailable ? 'disabled title="该尺码暂无库存"' : ''}
+                      ${detailedSize ? `title="${detailedSize}"` : ''}>
+                <span class="size-label">${readableSize}</span>
+                ${detailedSize && detailedSize !== readableSize ? `<span class="size-detail">${detailedSize}</span>` : ''}
+                ${!isAvailable ? '<span class="unavailable-badge">缺货</span>' : ''}
               </button>
             `;
           }).join('')}
         </div>
+        ${this.renderSizeGuide()}
+      </div>
+    `;
+  }
+
+  sortSizes(sizes) {
+    // 按照常见的尺码顺序排序
+    const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL'];
+
+    return sizes.sort((a, b) => {
+      const indexA = sizeOrder.indexOf(a);
+      const indexB = sizeOrder.indexOf(b);
+
+      if (indexA !== -1 && indexB !== -1) {
+        return indexA - indexB;
+      } else if (indexA !== -1) {
+        return -1;
+      } else if (indexB !== -1) {
+        return 1;
+      } else {
+        return a.localeCompare(b);
+      }
+    });
+  }
+
+  getReadableSizeText(size) {
+    // 获取可读的尺码文本
+    const translations = utils.getSizeTranslations();
+    return translations[size] || size;
+  }
+
+  getDetailedSizeText(size) {
+    // 从SKU数据中获取详细的尺码信息，如 "165/84A/S"
+    if (!this.officialData || !this.officialData.rows) return null;
+
+    const sku = this.officialData.rows.find(row => row.size === size);
+    return sku ? sku.sizeText : null;
+  }
+
+  isSizeAvailableForColor(size, colorNo) {
+    // 检查特定颜色下的尺码是否可用
+    if (!colorNo || !this.colorSizeMatrix[colorNo]) {
+      return true; // 如果没有颜色选择或SKU数据，默认可用
+    }
+
+    return this.colorSizeMatrix[colorNo][size] === true;
+  }
+
+  updateSizeAvailability() {
+    // 更新尺码选项的可用性状态
+    const sizeOptions = utils.$$('.size-option');
+    sizeOptions.forEach(option => {
+      const size = option.dataset.size;
+      const isAvailable = this.isSizeAvailableForColor(size, this.selectedColor);
+
+      option.classList.toggle('disabled', !isAvailable);
+      option.disabled = !isAvailable;
+
+      if (!isAvailable) {
+        option.title = '该尺码暂无库存';
+      } else {
+        const detailedSize = this.getDetailedSizeText(size);
+        option.title = detailedSize || '';
+      }
+    });
+  }
+
+  renderSizeGuide() {
+    return `
+      <div class="size-guide-hint">
+        <button type="button" class="size-guide-btn" onclick="productDetailPage.showSizeGuide()">
+          <i class="fas fa-ruler"></i>
+          尺码指南
+        </button>
       </div>
     `;
   }
 
   selectSize(size, index) {
-    // Update selected size
-    this.selectedSize = size;
-
-    // Update selected size display
-    const selectedSizeSpan = utils.$('.selected-size');
-    if (selectedSizeSpan) {
-      selectedSizeSpan.textContent = utils.translateSize(size);
+    // 检查尺码是否可用
+    if (!this.isSizeAvailableForColor(size, this.selectedColor)) {
+      console.warn('Size not available for selected color:', size, this.selectedColor);
+      return;
     }
 
-    // Update active size option
+    // 更新选中的尺码
+    this.selectedSize = size;
+
+    // 更新尺码显示
+    const selectedSizeSpan = utils.$('.selected-size');
+    if (selectedSizeSpan) {
+      selectedSizeSpan.textContent = this.getReadableSizeText(size);
+    }
+
+    // 更新尺码选项的选中状态
     const sizeOptions = utils.$$('.size-option');
     sizeOptions.forEach((option) => {
       option.classList.toggle('selected', option.dataset.size === size);
     });
 
-    console.log('Size selected:', size, '(' + utils.translateSize(size) + ')');
+    // 更新颜色选择的可用性（某些颜色可能在特定尺码下不可用）
+    this.updateColorAvailability();
+
+    console.log('Size selected:', size, '(' + this.getReadableSizeText(size) + ')');
   }
 
-  // For now, we'll assume all sizes are available since we don't have detailed SKU data
-  // In a production environment, this would check against actual inventory data
-  isSizeAvailable(size, colorNo = null) {
-    return true;
+  updateColorAvailability() {
+    // 更新颜色选项的可用性状态
+    const colorOptions = utils.$$('.color-option');
+    colorOptions.forEach(option => {
+      const colorNo = option.dataset.color;
+      const isAvailable = this.selectedSize ?
+        this.isSizeAvailableForColor(this.selectedSize, colorNo) :
+        this.isColorAvailable(colorNo);
+
+      option.classList.toggle('disabled', !isAvailable);
+
+      if (!isAvailable) {
+        option.title = this.selectedSize ?
+          `该颜色在尺码${this.getReadableSizeText(this.selectedSize)}下暂无库存` :
+          '该颜色暂无库存';
+      } else {
+        option.title = '';
+      }
+    });
+  }
+
+  showSizeGuide() {
+    // 显示尺码指南弹窗
+    const modal = document.createElement('div');
+    modal.className = 'size-guide-modal';
+    modal.innerHTML = `
+      <div class="modal-overlay" onclick="this.parentElement.remove()"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>尺码指南</h3>
+          <button class="modal-close" onclick="this.closest('.size-guide-modal').remove()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          ${this.renderDetailedSizeGuide()}
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // 添加样式
+    if (!document.querySelector('#size-guide-styles')) {
+      const styles = document.createElement('style');
+      styles.id = 'size-guide-styles';
+      styles.textContent = `
+        .size-guide-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .modal-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+          background: white;
+          border-radius: 8px;
+          max-width: 90vw;
+          max-height: 90vh;
+          overflow: auto;
+          position: relative;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1rem 1.5rem;
+          border-bottom: 1px solid var(--divider);
+        }
+        .modal-close {
+          background: none;
+          border: none;
+          font-size: 1.2rem;
+          cursor: pointer;
+          color: var(--text-secondary);
+        }
+        .modal-body {
+          padding: 1.5rem;
+        }
+      `;
+      document.head.appendChild(styles);
+    }
+  }
+
+  renderDetailedSizeGuide() {
+    let sizeGuideContent = '';
+
+    // 如果有SKU数据，显示详细的尺码对照表
+    if (this.officialData && this.officialData.summary && this.officialData.summary.sizeList) {
+      sizeGuideContent += `
+        <div class="size-chart-table">
+          <h4>尺码对照表</h4>
+          <table class="size-table">
+            <thead>
+              <tr>
+                <th>尺码</th>
+                <th>详细规格</th>
+                <th>适合身高/体重</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${this.officialData.summary.sizeList.map(sizeText => {
+                const match = sizeText.match(/^(\d+)\/(\d+)([A-C])\/(.+)$/);
+                if (match) {
+                  const [, height, chest, type, size] = match;
+                  return `
+                    <tr>
+                      <td><strong>${size}</strong></td>
+                      <td>${sizeText}</td>
+                      <td>身高 ${height}cm / 胸围 ${chest}cm</td>
+                    </tr>
+                  `;
+                } else {
+                  return `
+                    <tr>
+                      <td><strong>${sizeText}</strong></td>
+                      <td>-</td>
+                      <td>-</td>
+                    </tr>
+                  `;
+                }
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // 添加通用尺码建议
+    sizeGuideContent += `
+      <div class="size-recommendations">
+        <h4>选择建议</h4>
+        <div class="recommendation-grid">
+          <div class="recommendation-item">
+            <h5>🏃‍♂️ 运动休闲</h5>
+            <p>建议选择稍大一号，确保活动自如</p>
+          </div>
+          <div class="recommendation-item">
+            <h5>👔 正式场合</h5>
+            <p>选择合身尺码，展现良好形象</p>
+          </div>
+          <div class="recommendation-item">
+            <h5>🏠 居家舒适</h5>
+            <p>可选择大一号，增加舒适度</p>
+          </div>
+          <div class="recommendation-item">
+            <h5>❓ 不确定时</h5>
+            <p>建议选择稍大的尺码，避免过紧</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="size-tips">
+        <h4>测量方法</h4>
+        <ul>
+          <li><strong>胸围：</strong>在胸部最丰满处水平测量一周</li>
+          <li><strong>腰围：</strong>在腰部最细处水平测量一周</li>
+          <li><strong>臀围：</strong>在臀部最丰满处水平测量一周</li>
+          <li><strong>身高：</strong>不穿鞋，背靠墙壁直立测量</li>
+        </ul>
+
+        <div class="size-note">
+          <p><strong>注意：</strong>不同款式的版型可能有所差异，建议参考具体商品的尺寸表。如有疑问，建议选择稍大一号的尺码。</p>
+        </div>
+      </div>
+    `;
+
+    return sizeGuideContent;
   }
 
   renderProductDetails() {
@@ -724,10 +1246,16 @@ class ProductDetailPage {
   }
 
   initializeSelectionEvents() {
-    // Add event listeners for color selection
+    // 颜色选择事件
     const colorOptions = utils.$$('.color-option');
     colorOptions.forEach(option => {
-      option.addEventListener('click', () => {
+      option.addEventListener('click', (e) => {
+        // 防止点击禁用的选项
+        if (option.classList.contains('disabled')) {
+          e.preventDefault();
+          return;
+        }
+
         const colorNo = option.dataset.color;
         const colorText = option.dataset.colorText;
         const index = parseInt(option.dataset.index);
@@ -735,17 +1263,23 @@ class ProductDetailPage {
       });
     });
 
-    // Add event listeners for size selection
+    // 尺码选择事件
     const sizeOptions = utils.$$('.size-option');
     sizeOptions.forEach(option => {
-      option.addEventListener('click', () => {
+      option.addEventListener('click', (e) => {
+        // 防止点击禁用的选项
+        if (option.disabled || option.classList.contains('disabled')) {
+          e.preventDefault();
+          return;
+        }
+
         const size = option.dataset.size;
         const index = parseInt(option.dataset.index);
         this.selectSize(size, index);
       });
     });
 
-    // Add event listeners for image thumbnails
+    // 图片缩略图事件
     const thumbnails = utils.$$('.thumbnail');
     thumbnails.forEach(thumbnail => {
       thumbnail.addEventListener('click', () => {
@@ -754,6 +1288,59 @@ class ProductDetailPage {
         this.switchMainImage(imageUrl, index);
       });
     });
+
+    // 键盘导航支持
+    document.addEventListener('keydown', (e) => {
+      if (e.target.classList.contains('color-option') || e.target.classList.contains('size-option')) {
+        this.handleKeyboardNavigation(e);
+      }
+    });
+  }
+
+  handleKeyboardNavigation(e) {
+    const isColorOption = e.target.classList.contains('color-option');
+    const isSizeOption = e.target.classList.contains('size-option');
+
+    if (!isColorOption && !isSizeOption) return;
+
+    const options = isColorOption ? utils.$$('.color-option') : utils.$$('.size-option');
+    const currentIndex = Array.from(options).indexOf(e.target);
+
+    let nextIndex = currentIndex;
+
+    switch (e.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        e.preventDefault();
+        nextIndex = currentIndex > 0 ? currentIndex - 1 : options.length - 1;
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        e.preventDefault();
+        nextIndex = currentIndex < options.length - 1 ? currentIndex + 1 : 0;
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        e.target.click();
+        return;
+    }
+
+    // 跳过禁用的选项
+    while (options[nextIndex] && (options[nextIndex].disabled || options[nextIndex].classList.contains('disabled'))) {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        nextIndex = nextIndex > 0 ? nextIndex - 1 : options.length - 1;
+      } else {
+        nextIndex = nextIndex < options.length - 1 ? nextIndex + 1 : 0;
+      }
+
+      // 防止无限循环
+      if (nextIndex === currentIndex) break;
+    }
+
+    if (options[nextIndex] && !options[nextIndex].disabled && !options[nextIndex].classList.contains('disabled')) {
+      options[nextIndex].focus();
+    }
   }
 
   renderPriceHistoryTable() {

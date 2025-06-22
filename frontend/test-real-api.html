@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>真实API测试 - 优衣库价格监控</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages.css">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--surface);
+        }
+        
+        .test-input {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .test-input input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+        }
+        
+        .test-input button {
+            padding: 0.75rem 1.5rem;
+            background: var(--primary-500);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+        }
+        
+        .test-input button:hover {
+            background: var(--primary-600);
+        }
+        
+        .test-input button:disabled {
+            background: var(--gray-400);
+            cursor: not-allowed;
+        }
+        
+        .result-container {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--gray-50);
+            border-radius: var(--radius-md);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .result-container pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .loading {
+            color: var(--primary-500);
+        }
+        
+        .error {
+            color: var(--error-500);
+        }
+        
+        .success {
+            color: var(--success-500);
+        }
+        
+        .product-preview {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: white;
+        }
+        
+        .product-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: var(--radius-md);
+        }
+        
+        .product-info h4 {
+            margin: 0 0 0.5rem 0;
+        }
+        
+        .product-info p {
+            margin: 0.25rem 0;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>真实API测试</h1>
+        <p>测试每个商品的官方详细信息获取功能</p>
+        
+        <!-- 商品代码测试 -->
+        <div class="test-section">
+            <h3>🔍 商品详细信息测试</h3>
+            <div class="test-input">
+                <input type="text" id="productCode" placeholder="输入商品代码 (例如: 479308)" value="479308">
+                <button onclick="testProductDetail()">获取详细信息</button>
+            </div>
+            <div id="productResult" class="result-container" style="display: none;"></div>
+        </div>
+        
+        <!-- SPU数据测试 -->
+        <div class="test-section">
+            <h3>📊 SPU数据测试</h3>
+            <div class="test-input">
+                <input type="text" id="spuCode" placeholder="输入商品代码" value="479308">
+                <button onclick="testSPUData()">获取SPU数据</button>
+            </div>
+            <div id="spuResult" class="result-container" style="display: none;"></div>
+        </div>
+        
+        <!-- 图片数据测试 -->
+        <div class="test-section">
+            <h3>🖼️ 图片数据测试</h3>
+            <div class="test-input">
+                <input type="text" id="imageCode" placeholder="输入商品代码" value="479308">
+                <button onclick="testImageData()">获取图片数据</button>
+            </div>
+            <div id="imageResult" class="result-container" style="display: none;"></div>
+        </div>
+        
+        <!-- 完整官方数据测试 -->
+        <div class="test-section">
+            <h3>🎯 完整官方数据测试</h3>
+            <div class="test-input">
+                <input type="text" id="officialCode" placeholder="输入商品代码" value="479308">
+                <button onclick="testOfficialData()">获取完整官方数据</button>
+            </div>
+            <div id="officialResult" class="result-container" style="display: none;"></div>
+            <div id="officialPreview"></div>
+        </div>
+        
+        <!-- 商品列表测试 -->
+        <div class="test-section">
+            <h3>📋 从商品列表测试</h3>
+            <button onclick="loadProductList()">加载商品列表</button>
+            <div id="productListResult" class="result-container" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        async function testProductDetail() {
+            const code = document.getElementById('productCode').value;
+            const resultDiv = document.getElementById('productResult');
+            
+            if (!code) {
+                alert('请输入商品代码');
+                return;
+            }
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading">正在获取商品详细信息...</div>';
+            
+            try {
+                const product = await api.getProduct(code);
+                resultDiv.innerHTML = `<div class="success">✅ 商品信息获取成功</div><pre>${JSON.stringify(product, null, 2)}</pre>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ 获取失败: ${error.message}</div>`;
+            }
+        }
+        
+        async function testSPUData() {
+            const code = document.getElementById('spuCode').value;
+            const resultDiv = document.getElementById('spuResult');
+            
+            if (!code) {
+                alert('请输入商品代码');
+                return;
+            }
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading">正在获取SPU数据...</div>';
+            
+            try {
+                const spuData = await api.getProductOfficialSPU(code);
+                resultDiv.innerHTML = `<div class="success">✅ SPU数据获取成功</div><pre>${JSON.stringify(spuData, null, 2)}</pre>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ 获取失败: ${error.message}</div>`;
+            }
+        }
+        
+        async function testImageData() {
+            const code = document.getElementById('imageCode').value;
+            const resultDiv = document.getElementById('imageResult');
+            
+            if (!code) {
+                alert('请输入商品代码');
+                return;
+            }
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading">正在获取图片数据...</div>';
+            
+            try {
+                const imageData = await api.getProductOfficialImages(code);
+                resultDiv.innerHTML = `<div class="success">✅ 图片数据获取成功</div><pre>${JSON.stringify(imageData, null, 2)}</pre>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ 获取失败: ${error.message}</div>`;
+            }
+        }
+        
+        async function testOfficialData() {
+            const code = document.getElementById('officialCode').value;
+            const resultDiv = document.getElementById('officialResult');
+            const previewDiv = document.getElementById('officialPreview');
+            
+            if (!code) {
+                alert('请输入商品代码');
+                return;
+            }
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading">正在获取完整官方数据...</div>';
+            previewDiv.innerHTML = '';
+            
+            try {
+                const officialData = await api.getProductOfficialDetail(code);
+                resultDiv.innerHTML = `<div class="success">✅ 完整官方数据获取成功</div><pre>${JSON.stringify(officialData, null, 2)}</pre>`;
+                
+                // 显示预览
+                if (officialData.spu && officialData.spu.summary) {
+                    const summary = officialData.spu.summary;
+                    const firstImage = officialData.images && officialData.images.main561 ? 
+                        `https://www.uniqlo.cn${officialData.images.main561[0]}` : '';
+                    
+                    previewDiv.innerHTML = `
+                        <div class="product-preview">
+                            ${firstImage ? `<img src="${firstImage}" alt="商品图片" class="product-image">` : ''}
+                            <div class="product-info">
+                                <h4>${summary.name || '未知商品'}</h4>
+                                <p><strong>官方代码:</strong> ${officialData.officialCode}</p>
+                                <p><strong>颜色数量:</strong> ${officialData.spu.colorList ? officialData.spu.colorList.length : 0}</p>
+                                <p><strong>尺码数量:</strong> ${summary.sizeList ? summary.sizeList.length : 0}</p>
+                                <p><strong>SKU数量:</strong> ${officialData.spu.rows ? officialData.spu.rows.length : 0}</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ 获取失败: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadProductList() {
+            const resultDiv = document.getElementById('productListResult');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading">正在加载商品列表...</div>';
+            
+            try {
+                const products = await api.getProducts({ limit: 5 });
+                
+                let html = `<div class="success">✅ 商品列表加载成功，共 ${products.length} 个商品</div>`;
+                
+                for (const product of products) {
+                    html += `
+                        <div style="margin: 1rem 0; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-md);">
+                            <h4>${product.name_zh} (${product.product_code})</h4>
+                            <button onclick="testProductOfficialData('${product.product_code}')" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: var(--primary-500); color: white; border: none; border-radius: var(--radius-md); cursor: pointer;">
+                                测试官方数据
+                            </button>
+                            <div id="result-${product.product_code}" style="margin-top: 0.5rem;"></div>
+                        </div>
+                    `;
+                }
+                
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ 加载失败: ${error.message}</div>`;
+            }
+        }
+        
+        async function testProductOfficialData(code) {
+            const resultDiv = document.getElementById(`result-${code}`);
+            
+            resultDiv.innerHTML = '<div class="loading">正在获取官方数据...</div>';
+            
+            try {
+                const officialData = await api.getProductOfficialDetail(code);
+                
+                if (officialData.spu || officialData.images) {
+                    resultDiv.innerHTML = `<div class="success">✅ 官方数据获取成功</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">⚠️ 无法获取官方数据</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ 获取失败: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

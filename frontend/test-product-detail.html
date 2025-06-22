@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品详情测试 - 优衣库价格监控</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages.css">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .test-section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--surface);
+        }
+        
+        .test-section h3 {
+            margin-bottom: 1.5rem;
+            color: var(--primary-500);
+        }
+        
+        .demo-product {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+        }
+        
+        .demo-image {
+            width: 200px;
+            height: 200px;
+            background: var(--gray-100);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+        
+        .demo-info {
+            flex: 1;
+        }
+        
+        .demo-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .demo-price {
+            font-size: 1.25rem;
+            color: var(--primary-500);
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>商品详情界面重构测试</h1>
+            <p>测试尺码和颜色的匹配、可读性输出和动态筛选禁用功能</p>
+        </div>
+        
+        <!-- 颜色选择测试 -->
+        <div class="test-section">
+            <h3>🎨 颜色选择功能</h3>
+            <div class="demo-product">
+                <div class="demo-image">
+                    <i class="fas fa-image fa-3x"></i>
+                </div>
+                <div class="demo-info">
+                    <div class="demo-title">UT NY POP ART印花短袖T恤</div>
+                    <div class="demo-price">¥79</div>
+                    
+                    <div class="color-selection">
+                        <h4>颜色: <span class="selected-color">白色</span></h4>
+                        <div class="color-options">
+                            <div class="color-option selected" data-color="COL00" data-color-text="白色">
+                                <div class="color-swatch" style="background-color: #ffffff; border: 2px solid #ccc;"></div>
+                                <span class="color-name">白色</span>
+                            </div>
+                            <div class="color-option" data-color="COL09" data-color-text="黑色">
+                                <div class="color-swatch" style="background-color: #000000;"></div>
+                                <span class="color-name">黑色</span>
+                            </div>
+                            <div class="color-option" data-color="COL62" data-color-text="蓝色">
+                                <div class="color-swatch" style="background-color: #1976d2;"></div>
+                                <span class="color-name">蓝色</span>
+                            </div>
+                            <div class="color-option disabled" data-color="COL15" data-color-text="红色">
+                                <div class="color-swatch" style="background-color: #d32f2f;"></div>
+                                <span class="color-name">红色</span>
+                                <span class="unavailable-badge">缺货</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 尺码选择测试 -->
+        <div class="test-section">
+            <h3>📏 尺码选择功能</h3>
+            <div class="demo-product">
+                <div class="demo-image">
+                    <i class="fas fa-tshirt fa-3x"></i>
+                </div>
+                <div class="demo-info">
+                    <div class="demo-title">UT NY POP ART印花短袖T恤</div>
+                    <div class="demo-price">¥79</div>
+                    
+                    <div class="size-selection">
+                        <h4>尺码: <span class="selected-size">请选择</span></h4>
+                        <div class="size-options">
+                            <button class="size-option" data-size="XS">
+                                <span class="size-label">XS</span>
+                                <span class="size-detail">160/76A</span>
+                            </button>
+                            <button class="size-option selected" data-size="S">
+                                <span class="size-label">S</span>
+                                <span class="size-detail">165/84A</span>
+                            </button>
+                            <button class="size-option" data-size="M">
+                                <span class="size-label">M</span>
+                                <span class="size-detail">170/92A</span>
+                            </button>
+                            <button class="size-option" data-size="L">
+                                <span class="size-label">L</span>
+                                <span class="size-detail">175/100A</span>
+                            </button>
+                            <button class="size-option" data-size="XL">
+                                <span class="size-label">XL</span>
+                                <span class="size-detail">180/108B</span>
+                            </button>
+                            <button class="size-option disabled" data-size="XXL" disabled>
+                                <span class="size-label">XXL</span>
+                                <span class="size-detail">185/112C</span>
+                                <span class="unavailable-badge">缺货</span>
+                            </button>
+                        </div>
+                        <div class="size-guide-hint">
+                            <button type="button" class="size-guide-btn" onclick="showSizeGuideDemo()">
+                                <i class="fas fa-ruler"></i>
+                                尺码指南
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 交互演示 -->
+        <div class="test-section">
+            <h3>🔄 交互演示</h3>
+            <p>点击不同的颜色和尺码选项来测试交互效果：</p>
+            <ul>
+                <li>✅ 颜色选择会影响可用的尺码</li>
+                <li>✅ 尺码选择会影响可用的颜色</li>
+                <li>✅ 禁用的选项无法点击</li>
+                <li>✅ 支持键盘导航（Tab、方向键、Enter）</li>
+                <li>✅ 显示详细的尺码信息</li>
+                <li>✅ 提供尺码指南弹窗</li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="js/utils.js"></script>
+    <script>
+        // 模拟颜色-尺码矩阵
+        const colorSizeMatrix = {
+            'COL00': { 'XS': true, 'S': true, 'M': true, 'L': true, 'XL': true, 'XXL': false },
+            'COL09': { 'XS': false, 'S': true, 'M': true, 'L': true, 'XL': false, 'XXL': false },
+            'COL62': { 'XS': true, 'S': true, 'M': false, 'L': true, 'XL': true, 'XXL': false },
+            'COL15': { 'XS': false, 'S': false, 'M': false, 'L': false, 'XL': false, 'XXL': false }
+        };
+        
+        let selectedColor = 'COL00';
+        let selectedSize = 'S';
+        
+        // 初始化事件监听
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeColorSelection();
+            initializeSizeSelection();
+            updateAvailability();
+        });
+        
+        function initializeColorSelection() {
+            const colorOptions = document.querySelectorAll('.color-option');
+            colorOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    if (this.classList.contains('disabled')) return;
+                    
+                    selectedColor = this.dataset.color;
+                    
+                    // 更新选中状态
+                    colorOptions.forEach(opt => opt.classList.remove('selected'));
+                    this.classList.add('selected');
+                    
+                    // 更新显示文本
+                    document.querySelector('.selected-color').textContent = this.dataset.colorText;
+                    
+                    // 更新可用性
+                    updateAvailability();
+                });
+            });
+        }
+        
+        function initializeSizeSelection() {
+            const sizeOptions = document.querySelectorAll('.size-option');
+            sizeOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    if (this.disabled || this.classList.contains('disabled')) return;
+                    
+                    selectedSize = this.dataset.size;
+                    
+                    // 更新选中状态
+                    sizeOptions.forEach(opt => opt.classList.remove('selected'));
+                    this.classList.add('selected');
+                    
+                    // 更新显示文本
+                    document.querySelector('.selected-size').textContent = this.dataset.size;
+                    
+                    // 更新可用性
+                    updateAvailability();
+                });
+            });
+        }
+        
+        function updateAvailability() {
+            // 更新尺码可用性
+            const sizeOptions = document.querySelectorAll('.size-option');
+            sizeOptions.forEach(option => {
+                const size = option.dataset.size;
+                const isAvailable = colorSizeMatrix[selectedColor] && colorSizeMatrix[selectedColor][size];
+                
+                option.classList.toggle('disabled', !isAvailable);
+                option.disabled = !isAvailable;
+            });
+            
+            // 更新颜色可用性
+            const colorOptions = document.querySelectorAll('.color-option');
+            colorOptions.forEach(option => {
+                const color = option.dataset.color;
+                const isAvailable = colorSizeMatrix[color] && colorSizeMatrix[color][selectedSize];
+                
+                option.classList.toggle('disabled', !isAvailable);
+            });
+        }
+        
+        function showSizeGuideDemo() {
+            alert('尺码指南弹窗演示\n\n这里会显示详细的尺码对照表和选择建议。');
+        }
+    </script>
+</body>
+</html>

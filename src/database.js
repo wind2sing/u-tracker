@@ -131,26 +131,42 @@ class Database {
         }
     }
 
-    // 数据库迁移：添加心跳相关列
+    // 数据库迁移：添加心跳相关列和商品活跃度跟踪
     async migrateDatabase() {
         try {
             // 检查是否需要添加心跳相关列
-            const tableInfo = await this.all("PRAGMA table_info(scraping_status)");
-            const columnNames = tableInfo.map(col => col.name);
+            const scrapingTableInfo = await this.all("PRAGMA table_info(scraping_status)");
+            const scrapingColumnNames = scrapingTableInfo.map(col => col.name);
 
-            if (!columnNames.includes('last_heartbeat')) {
+            if (!scrapingColumnNames.includes('last_heartbeat')) {
                 console.log('添加 last_heartbeat 列...');
                 await this.run('ALTER TABLE scraping_status ADD COLUMN last_heartbeat DATETIME');
             }
 
-            if (!columnNames.includes('current_page')) {
+            if (!scrapingColumnNames.includes('current_page')) {
                 console.log('添加 current_page 列...');
                 await this.run('ALTER TABLE scraping_status ADD COLUMN current_page INTEGER DEFAULT 0');
             }
 
-            if (!columnNames.includes('total_pages')) {
+            if (!scrapingColumnNames.includes('total_pages')) {
                 console.log('添加 total_pages 列...');
                 await this.run('ALTER TABLE scraping_status ADD COLUMN total_pages INTEGER DEFAULT 0');
+            }
+
+            // 检查是否需要添加商品活跃度跟踪列
+            const productsTableInfo = await this.all("PRAGMA table_info(products)");
+            const productsColumnNames = productsTableInfo.map(col => col.name);
+
+            if (!productsColumnNames.includes('last_seen_at')) {
+                console.log('添加 last_seen_at 列...');
+                await this.run('ALTER TABLE products ADD COLUMN last_seen_at DATETIME');
+                // 为现有记录设置默认值
+                await this.run('UPDATE products SET last_seen_at = CURRENT_TIMESTAMP WHERE last_seen_at IS NULL');
+            }
+
+            if (!productsColumnNames.includes('is_active')) {
+                console.log('添加 is_active 列...');
+                await this.run('ALTER TABLE products ADD COLUMN is_active BOOLEAN DEFAULT 1');
             }
 
             console.log('数据库迁移完成');
@@ -200,8 +216,8 @@ class Database {
         // 使用 INSERT ... ON CONFLICT 来保持 created_at 不变，只更新其他字段
         const sql = `
             INSERT INTO products
-            (product_code, name, name_zh, category_code, gender, season, material, main_pic, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            (product_code, name, name_zh, category_code, gender, season, material, main_pic, last_seen_at, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ON CONFLICT(product_code) DO UPDATE SET
                 name = excluded.name,
                 name_zh = excluded.name_zh,
@@ -210,6 +226,8 @@ class Database {
                 season = excluded.season,
                 material = excluded.material,
                 main_pic = excluded.main_pic,
+                last_seen_at = CURRENT_TIMESTAMP,
+                is_active = 1,
                 updated_at = CURRENT_TIMESTAMP
         `;
 
@@ -484,6 +502,54 @@ class Database {
         `;
 
         return await this.all(sql, [cutoffTime]);
+    }
+
+    // 商品活跃度管理方法
+    async markInactiveProducts(hoursThreshold = 48) {
+        const cutoffTime = new Date(Date.now() - hoursThreshold * 60 * 60 * 1000).toISOString();
+
+        const sql = `
+            UPDATE products
+            SET is_active = 0
+            WHERE last_seen_at < ?
+            AND is_active = 1
+        `;
+
+        const result = await this.run(sql, [cutoffTime]);
+        console.log(`标记了 ${result.changes} 个商品为非活跃状态（超过${hoursThreshold}小时未出现）`);
+        return result.changes;
+    }
+
+    // 获取非活跃商品列表
+    async getInactiveProducts(limit = 100) {
+        const sql = `
+            SELECT p.*, ph.stock_status, ph.current_price, ph.recorded_at as last_price_update
+            FROM products p
+            LEFT JOIN price_history ph ON p.product_code = ph.product_code
+            WHERE p.is_active = 0
+            AND ph.id IN (
+                SELECT MAX(id) FROM price_history
+                GROUP BY product_code
+            )
+            ORDER BY p.last_seen_at DESC
+            LIMIT ?
+        `;
+
+        return await this.all(sql, [limit]);
+    }
+
+    // 获取活跃商品统计
+    async getProductActivityStats() {
+        const activeCount = await this.get('SELECT COUNT(*) as count FROM products WHERE is_active = 1');
+        const inactiveCount = await this.get('SELECT COUNT(*) as count FROM products WHERE is_active = 0');
+        const totalCount = await this.get('SELECT COUNT(*) as count FROM products');
+
+        return {
+            active: activeCount.count,
+            inactive: inactiveCount.count,
+            total: totalCount.count,
+            activePercentage: totalCount.count > 0 ? (activeCount.count / totalCount.count * 100).toFixed(1) : 0
+        };
     }
 }
 

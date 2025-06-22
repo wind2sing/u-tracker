@@ -275,6 +275,17 @@ class ProductsPage {
               </select>
             </div>
 
+            <!-- 商品状态筛选 -->
+            <div class="filter-group">
+              <label for="stock-select">库存状态</label>
+              <select id="stock-select">
+                <option value="" ${this.filters.stockStatus === '' ? 'selected' : ''}>仅有库存</option>
+                <option value="out_of_stock" ${this.filters.stockStatus === 'out_of_stock' ? 'selected' : ''}>仅无库存</option>
+                <option value="all" ${this.filters.stockStatus === 'all' ? 'selected' : ''}>显示全部</option>
+                <option value="inactive" ${this.filters.stockStatus === 'inactive' ? 'selected' : ''}>仅非活跃</option>
+              </select>
+            </div>
+
             <!-- 性别筛选 -->
             <div class="filter-dropdown" id="gender-dropdown">
               <button class="filter-dropdown-btn" id="gender-btn">
@@ -664,6 +675,12 @@ class ProductsPage {
       } else {
         delete params.season;
       }
+
+      // Handle stock status
+      if (params.stockStatus) {
+        params.inStock = params.stockStatus;
+      }
+      delete params.stockStatus;
 
       const data = await api.getProducts(params);
       

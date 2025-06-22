@@ -1001,6 +1001,31 @@
   border-radius: 50%;
 }
 
+/* 缺货提示 */
+.out-of-stock-notice {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.out-of-stock-notice p {
+  margin: 0.5rem 0;
+  color: #856404;
+}
+
+.out-of-stock-notice p:first-child {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.out-of-stock-notice p:last-child {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
 /* Enhanced Visual Effects */
 .product-detail-layout {
   animation: fadeIn 0.5s ease-in-out;

@@ -97,7 +97,8 @@ class DashboardPage {
       ]);
 
       this.stats = statsData;
-      this.alerts = alertsData.slice(0, 5); // Show only first 5 alerts
+      // Handle new API format for alerts (with pagination)
+      this.alerts = (alertsData.alerts || alertsData).slice(0, 5); // Show only first 5 alerts
       this.trending = trendingData.slice(0, 5); // Show only first 5 trending
       this.scrapingStatus = scrapingStatusData;
       this.schedulerStatus = schedulerStatusData;

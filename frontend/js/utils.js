@@ -680,6 +680,6 @@ window.utils = {
   showLoading, hideLoading,
   getImageUrl,
   handleError,
-  translateColor, translateSize, translateColors, translateSizes,
+  translateColor, translateSize, translateColors, translateSizes, getSizeTranslations,
   getUniqloProductUrl, calculateDiscount, calculatePriceLevel, getPriceLevelText, getPriceLevelColor, formatRating, generateStarRating, formatRelativeTime
 };
