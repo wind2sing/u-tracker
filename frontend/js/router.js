@@ -141,7 +141,7 @@ class Router {
     const savedPosition = this.scrollPositions[currentRoute];
 
     // 如果是商品列表页面且有保存的滚动位置，恢复位置
-    if (currentRoute === 'products' && savedPosition !== undefined) {
+    if (currentRoute === '/products' && savedPosition !== undefined) {
       // 使用 setTimeout 确保页面内容已完全渲染
       setTimeout(() => {
         window.scrollTo({ top: savedPosition, behavior: 'smooth' });
