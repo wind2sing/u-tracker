@@ -101,10 +101,13 @@ class Router {
     try {
       // Show loading state
       this.showPageLoading();
-      
+
       // Execute route handler
       await handler(params);
-      
+
+      // Scroll to top after page content is loaded
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
     } catch (error) {
       console.error('Route handler error:', error);
       this.showError('页面加载失败', error.message);
