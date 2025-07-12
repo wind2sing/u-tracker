@@ -271,7 +271,7 @@ class ProductsPage {
                 <option value="discount_percentage:desc" ${this.filters.sortBy === 'discount_percentage' && this.filters.sortOrder === 'desc' ? 'selected' : ''}>折扣力度</option>
                 <option value="name_zh:asc" ${this.filters.sortBy === 'name_zh' && this.filters.sortOrder === 'asc' ? 'selected' : ''}>名称A-Z</option>
                 <option value="sales_count:desc" ${this.filters.sortBy === 'sales_count' && this.filters.sortOrder === 'desc' ? 'selected' : ''}>销量最高</option>
-                <option value="created_at:desc" ${this.filters.sortBy === 'created_at' && this.filters.sortOrder === 'desc' ? 'selected' : ''}>最新上架</option>
+                <option value="created_at:desc" ${this.filters.sortBy === 'created_at' && this.filters.sortOrder === 'desc' ? 'selected' : ''}>最新发现</option>
               </select>
             </div>
 

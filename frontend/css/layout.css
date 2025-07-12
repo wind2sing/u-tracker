@@ -76,6 +76,41 @@
   background-color: var(--primary-100);
 }
 
+/* Theme Toggle Button */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius-full);
+  background-color: var(--surface-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-left: var(--spacing-sm);
+}
+
+.theme-toggle:hover {
+  background-color: var(--primary-50);
+  color: var(--primary-600);
+  transform: scale(1.05);
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
+}
+
+.theme-toggle i {
+  font-size: var(--font-size-lg);
+  transition: transform var(--transition-normal);
+}
+
+.theme-toggle:hover i {
+  transform: rotate(15deg);
+}
+
 .nav-toggle {
   display: none;
   flex-direction: column;
@@ -133,6 +168,12 @@
   .nav-link {
     width: 100%;
     justify-content: center;
+  }
+
+  .theme-toggle {
+    margin-left: 0;
+    margin-top: var(--spacing-md);
+    align-self: center;
   }
 }
 

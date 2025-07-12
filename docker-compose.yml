@@ -6,15 +6,16 @@ services:
     container_name: uniqlo-tracker
     restart: unless-stopped
     ports:
-      - "3001:3001"  # 统一服务端口（API + 前端）
+      - "${PORT:-3001}:${PORT:-3001}"  # 统一服务端口（API + 前端），可通过环境变量PORT配置
     volumes:
       # 统一挂载数据目录（包含data、logs、reports子目录）
       - ./u-tracker-data:/app/u-tracker-data
     environment:
       - NODE_ENV=production
+      - PORT=${PORT:-3001}  # 端口配置，默认3001
       - TZ=Asia/Shanghai  # 设置时区
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      test: ["CMD", "sh", "-c", "wget --no-verbose --tries=1 --spider http://localhost:$${PORT:-3001}/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

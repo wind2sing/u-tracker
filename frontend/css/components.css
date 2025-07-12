@@ -7,7 +7,8 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: var(--background);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -71,13 +72,14 @@
 }
 
 .btn-secondary {
-  background-color: var(--gray-100);
+  background-color: var(--surface-secondary);
   color: var(--text-primary);
   border: 1px solid var(--border);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: var(--gray-200);
+  background-color: var(--surface);
+  border-color: var(--primary-500);
 }
 
 .btn-success {
@@ -143,12 +145,13 @@
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-xs) var(--spacing-sm);
-  background-color: var(--gray-100);
+  background-color: var(--surface-secondary);
   color: var(--text-secondary);
   border-radius: var(--radius-full);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   white-space: nowrap;
+  border: 1px solid var(--border-light);
 }
 
 .chip-primary {
@@ -405,7 +408,7 @@
 }
 
 .pagination-item:hover {
-  background-color: var(--gray-100);
+  background-color: var(--surface-secondary);
 }
 
 .pagination-item.active {
@@ -461,7 +464,7 @@
 }
 
 .dropdown-item:hover {
-  background-color: var(--gray-100);
+  background-color: var(--surface-secondary);
 }
 
 /* Product Grid */
@@ -780,9 +783,10 @@
 .view-toggle {
   display: flex;
   gap: var(--spacing-xs);
-  background-color: var(--gray-100);
+  background-color: var(--surface-secondary);
   border-radius: var(--radius-md);
   padding: var(--spacing-xs);
+  border: 1px solid var(--border-light);
 }
 
 .view-toggle button {
@@ -986,7 +990,7 @@
 }
 
 .radio-option:hover {
-  background-color: var(--gray-50);
+  background-color: var(--surface-secondary);
 }
 
 .radio-option input[type="radio"] {
@@ -1016,7 +1020,7 @@
 }
 
 .color-option:hover {
-  background-color: var(--gray-50);
+  background-color: var(--surface-secondary);
 }
 
 .color-option input[type="checkbox"] {
@@ -1065,7 +1069,7 @@
 }
 
 .checkbox-option:hover {
-  background-color: var(--gray-50);
+  background-color: var(--surface-secondary);
 }
 
 .checkbox-option input[type="checkbox"] {
@@ -1110,7 +1114,7 @@
 }
 
 .filter-dropdown-btn:hover {
-  background-color: var(--gray-50);
+  background-color: var(--surface-secondary);
   border-color: var(--primary-300);
 }
 
@@ -1161,7 +1165,7 @@
 }
 
 .filter-option:hover {
-  background-color: var(--gray-50);
+  background-color: var(--surface-secondary);
 }
 
 .filter-option input {
@@ -1194,7 +1198,7 @@
 }
 
 .color-filter-option:hover {
-  background-color: var(--gray-50);
+  background-color: var(--surface-secondary);
 }
 
 .color-filter-option input {
@@ -1391,15 +1395,16 @@
 }
 
 .modal-overlay .modal {
-  background: #ffffff;
-  color: #333333;
+  background: var(--surface);
+  color: var(--text-primary);
   border-radius: var(--radius-lg);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-2xl);
   max-width: 500px;
   width: 90%;
   max-height: 90vh;
   overflow: hidden;
   animation: modalSlideIn 0.3s ease-out;
+  border: 1px solid var(--border);
 }
 
 @keyframes modalSlideIn {
@@ -1425,71 +1430,71 @@
 }
 
 .modal-overlay .modal-close:hover {
-  background: #f3f4f6;
-  color: #333333;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
 }
 
 .modal-overlay .modal-header {
-  background: #ffffff;
-  color: #333333;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--surface);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--divider);
 }
 
 .modal-overlay .modal-header h3 {
-  color: #111827;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
 .modal-overlay .modal-body {
-  background: #ffffff;
-  color: #374151;
+  background: var(--surface);
+  color: var(--text-secondary);
 }
 
 .modal-overlay .modal-footer {
-  background: #f9fafb;
-  border-top: 1px solid #e5e7eb;
+  background: var(--surface-secondary);
+  border-top: 1px solid var(--divider);
 }
 
 .modal-overlay .form-group label {
-  color: #374151;
+  color: var(--text-primary);
   font-weight: 500;
   margin-bottom: 0.5rem;
   display: block;
 }
 
 .modal-overlay .form-control {
-  background: #ffffff;
-  border: 1px solid #d1d5db;
-  color: #111827;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
   padding: 0.75rem;
   border-radius: 0.375rem;
   width: 100%;
 }
 
 .modal-overlay .form-text {
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 0.875rem;
   margin-top: 0.25rem;
 }
 
 .modal-overlay .alert {
-  background: #dbeafe;
-  border: 1px solid #93c5fd;
-  color: #1e40af;
+  background: var(--info-50);
+  border: 1px solid var(--info-200);
+  color: var(--info-800);
   border-radius: 0.5rem;
   padding: 1rem;
 }
 
 .modal-overlay .alert i {
-  color: #3b82f6;
+  color: var(--info-600);
 }
 
 .modal-overlay .alert strong {
-  color: #1e40af;
+  color: var(--info-800);
 }
 
 .modal-overlay .alert ul {
-  color: #1e40af;
+  color: var(--info-800);
 }
 
 .modal-overlay input[type="checkbox"] {
@@ -1511,21 +1516,21 @@
 }
 
 .modal-overlay .btn-secondary {
-  background: #6b7280;
-  color: #ffffff;
+  background: var(--gray-600);
+  color: white;
 }
 
 .modal-overlay .btn-secondary:hover {
-  background: #4b5563;
+  background: var(--gray-700);
 }
 
 .modal-overlay .btn-primary {
-  background: #3b82f6;
-  color: #ffffff;
+  background: var(--primary-500);
+  color: white;
 }
 
 .modal-overlay .btn-primary:hover {
-  background: #2563eb;
+  background: var(--primary-600);
 }
 
 /* 通知样式 */
@@ -1615,7 +1620,7 @@
 }
 
 .notification-close:hover {
-  background: var(--gray-100);
+  background: var(--surface-secondary);
   color: var(--text-primary);
 }
 

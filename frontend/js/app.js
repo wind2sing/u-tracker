@@ -13,6 +13,9 @@ class App {
       // Show loading overlay
       this.showGlobalLoading();
 
+      // Initialize theme
+      this.initTheme();
+
       // Initialize navigation
       this.initNavigation();
 
@@ -178,13 +181,47 @@ class App {
   }
 
   // Theme management
+  initTheme() {
+    // 获取保存的主题或检测系统偏好
+    const savedTheme = utils.storage.get('theme');
+    let theme = savedTheme;
+
+    if (!savedTheme) {
+      // 如果没有保存的主题，检测系统偏好
+      theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    this.setTheme(theme);
+    this.updateThemeIcon(theme);
+
+    // 添加主题切换按钮事件监听
+    const themeToggle = utils.$('#theme-toggle');
+    if (themeToggle) {
+      utils.on(themeToggle, 'click', () => {
+        const newTheme = this.toggleTheme();
+        this.updateThemeIcon(newTheme);
+      });
+    }
+
+    // 监听系统主题变化
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!utils.storage.get('theme')) {
+        // 只有在用户没有手动设置主题时才跟随系统
+        const systemTheme = e.matches ? 'dark' : 'light';
+        this.setTheme(systemTheme);
+        this.updateThemeIcon(systemTheme);
+      }
+    });
+  }
+
   setTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     utils.storage.set('theme', theme);
   }
 
   getTheme() {
-    return utils.storage.get('theme', 'light');
+    return utils.storage.get('theme') ||
+           (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   }
 
   toggleTheme() {
@@ -192,6 +229,19 @@ class App {
     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
     this.setTheme(newTheme);
     return newTheme;
+  }
+
+  updateThemeIcon(theme) {
+    const themeIcon = utils.$('#theme-icon');
+    if (themeIcon) {
+      if (theme === 'dark') {
+        themeIcon.className = 'fas fa-sun';
+        themeIcon.parentElement.title = '切换到浅色模式';
+      } else {
+        themeIcon.className = 'fas fa-moon';
+        themeIcon.parentElement.title = '切换到深色模式';
+      }
+    }
   }
 }
 

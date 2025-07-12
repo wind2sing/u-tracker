@@ -23,7 +23,8 @@ class UniqloTracker {
             await this.scheduler.initialize();
 
             // 启动API服务器，传入调度器实例
-            this.apiServer = new ApiServer(config.api?.port || 3001, this.scheduler);
+            const port = process.env.PORT || config.api?.port || 3001;
+            this.apiServer = new ApiServer(port, this.scheduler);
             await this.apiServer.start();
             logger.info('API Server started successfully');
 

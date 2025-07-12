@@ -85,7 +85,7 @@
 }
 
 .trending-item:hover {
-  background-color: var(--gray-100);
+  background-color: var(--surface-secondary);
 }
 
 .trending-image {
@@ -93,7 +93,7 @@
   height: 80px; /* 3:4 aspect ratio */
   border-radius: var(--radius-md);
   object-fit: cover;
-  background-color: var(--gray-200);
+  background-color: var(--surface-secondary);
 }
 
 .trending-content {

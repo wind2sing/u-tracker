@@ -18,6 +18,18 @@ if ! command -v docker-compose &> /dev/null; then
     exit 1
 fi
 
+# 读取端口配置
+PORT=${PORT:-$(node -e "
+try {
+  const config = require('./config/default.json');
+  console.log(config.api?.port || 3001);
+} catch (e) {
+  console.log(3001);
+}
+" 2>/dev/null || echo "3001")}
+
+echo "🔧 Using port: $PORT"
+
 # 创建统一的数据目录
 echo "📁 Creating unified data directory..."
 mkdir -p u-tracker-data/data u-tracker-data/logs u-tracker-data/reports
@@ -41,13 +53,13 @@ sleep 10
 
 # 检查服务状态
 echo "🔍 Checking service health..."
-if curl -f http://localhost:3001/api/health > /dev/null 2>&1; then
+if curl -f http://localhost:$PORT/api/health > /dev/null 2>&1; then
     echo "✅ Unified server (API + Frontend) is healthy"
 else
     echo "❌ Unified server is not responding"
 fi
 
-if curl -f http://localhost:3001 > /dev/null 2>&1; then
+if curl -f http://localhost:$PORT > /dev/null 2>&1; then
     echo "✅ Frontend interface is accessible"
 else
     echo "❌ Frontend interface is not responding"
@@ -55,8 +67,8 @@ fi
 
 echo ""
 echo "🎉 Uniqlo Tracker is now running!"
-echo "📱 Web Interface: http://localhost:3001"
-echo "🔗 API Endpoint: http://localhost:3001/api"
+echo "📱 Web Interface: http://localhost:$PORT"
+echo "🔗 API Endpoint: http://localhost:$PORT/api"
 echo ""
 echo "📁 Data Directory: ./u-tracker-data (contains data, logs, reports)"
 echo "📊 To view logs: docker-compose logs -f"

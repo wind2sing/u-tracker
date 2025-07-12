@@ -90,6 +90,16 @@ fi
 # 创建必要的目录
 mkdir -p data logs reports
 
+# 读取配置文件中的端口，如果读取失败则使用默认端口3001
+PORT=$(node -e "
+try {
+  const config = require('./config/default.json');
+  console.log(process.env.PORT || config.api?.port || 3001);
+} catch (e) {
+  console.log(process.env.PORT || 3001);
+}
+" 2>/dev/null || echo "3001")
+
 # 交互式选择模式
 if [ "$INTERACTIVE" = true ]; then
     echo ""
@@ -138,9 +148,9 @@ fi
 if [ "$API_ONLY" = true ]; then
     echo ""
     echo "🌐 启动API服务器模式..."
-    echo "📊 Web界面: http://localhost:3001"
-    echo "🔗 API接口: http://localhost:3001/api"
-    echo "🏥 健康检查: http://localhost:3001/api/health"
+    echo "📊 Web界面: http://localhost:$PORT"
+    echo "🔗 API接口: http://localhost:$PORT/api"
+    echo "🏥 健康检查: http://localhost:$PORT/api/health"
     echo "ℹ️  注意: 此模式不包含爬虫调度器，不会自动抓取新数据"
     echo ""
     echo "按 Ctrl+C 停止服务"
@@ -154,9 +164,9 @@ if [ "$API_ONLY" = true ]; then
 elif [ "$FULL_MODE" = true ]; then
     echo ""
     echo "🌐 启动完整系统模式..."
-    echo "📊 Web界面: http://localhost:3001"
-    echo "🔗 API接口: http://localhost:3001/api"
-    echo "🏥 健康检查: http://localhost:3001/api/health"
+    echo "📊 Web界面: http://localhost:$PORT"
+    echo "🔗 API接口: http://localhost:$PORT/api"
+    echo "🏥 健康检查: http://localhost:$PORT/api/health"
     echo "🕷️ 爬虫调度器: 自动运行（每2小时抓取一次）"
     echo ""
     echo "按 Ctrl+C 停止服务"

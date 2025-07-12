@@ -186,11 +186,11 @@ class ProductDetailPage {
     // 构建SKU映射表，包含所有启用的SKU
     rows.forEach(sku => {
       const colorNo = sku.colorNo;
-      const size = sku.size;
+      const size = sku.size ? sku.size.trim() : sku.size; // 去除尺码字段的空格
       const isEnabled = sku.enabledFlag === 'Y';
       const skuCode = sku.productId || sku.skuCode; // 使用productId作为SKU代码
 
-      if (isEnabled && skuCode) {
+      if (isEnabled && skuCode && size) {
         if (!this.skuMapping[colorNo]) {
           this.skuMapping[colorNo] = {};
         }
@@ -649,9 +649,13 @@ class ProductDetailPage {
     // 优先使用SKU数据中的尺码信息
     if (this.officialData && this.officialData.summary && this.officialData.summary.sizeList) {
       sizes = this.officialData.summary.sizeList.map(sizeText => {
-        // 从 "165/84A/S" 中提取 "S"
+        // 尝试从 "165/84A/S" 中提取 "S"，如果没有标准尺码则使用原始文本
         const match = sizeText.match(/\/([^\/]+)$/);
-        return match ? match[1] : sizeText;
+        if (match && match[1] && ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL'].includes(match[1])) {
+          return match[1]; // 返回标准尺码
+        } else {
+          return sizeText; // 返回详细尺寸规格，如 "160/70A"
+        }
       });
     } else if (this.product.available_sizes && this.product.available_sizes.length > 0) {
       sizes = this.product.available_sizes;
@@ -730,13 +734,26 @@ class ProductDetailPage {
       const indexB = sizeOrder.indexOf(b);
 
       if (indexA !== -1 && indexB !== -1) {
+        // 两个都是标准尺码
         return indexA - indexB;
       } else if (indexA !== -1) {
+        // a是标准尺码，b不是
         return -1;
       } else if (indexB !== -1) {
+        // b是标准尺码，a不是
         return 1;
       } else {
-        return a.localeCompare(b);
+        // 两个都不是标准尺码，按照详细尺寸规格排序
+        // 尝试提取数字进行排序（如 "160/70A" -> 160）
+        const numA = parseInt(a.match(/^(\d+)/)?.[1] || '0');
+        const numB = parseInt(b.match(/^(\d+)/)?.[1] || '0');
+
+        if (numA !== numB) {
+          return numA - numB;
+        } else {
+          // 如果数字相同，按字符串排序
+          return a.localeCompare(b);
+        }
       }
     });
   }

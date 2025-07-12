@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主题测试 - 优衣库价格追踪器</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layout.css">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+        }
+        
+        .test-section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .color-demo {
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        
+        .bg-primary-demo { background: var(--primary-500); color: white; }
+        .bg-secondary-demo { background: var(--surface-secondary); color: var(--text-primary); }
+        .bg-success-demo { background: var(--success-500); color: white; }
+        .bg-warning-demo { background: var(--warning-500); color: white; }
+        .bg-error-demo { background: var(--error-500); color: white; }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-flask"></i>
+                <span>主题测试</span>
+            </div>
+            
+            <div class="nav-menu">
+                <a href="/" class="nav-link">
+                    <i class="fas fa-home"></i>
+                    <span>返回主页</span>
+                </a>
+                <button id="theme-toggle" class="theme-toggle" title="切换主题">
+                    <i class="fas fa-moon" id="theme-icon"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="test-container">
+            <h1>🌙 主题切换测试页面</h1>
+            <p>这个页面用于测试浅色和深色主题的效果。点击右上角的主题切换按钮来体验不同模式。</p>
+            
+            <!-- 颜色测试 -->
+            <div class="test-section">
+                <h2>🎨 颜色系统测试</h2>
+                <div class="test-grid">
+                    <div class="color-demo bg-primary-demo">主色调</div>
+                    <div class="color-demo bg-secondary-demo">次要色</div>
+                    <div class="color-demo bg-success-demo">成功色</div>
+                    <div class="color-demo bg-warning-demo">警告色</div>
+                    <div class="color-demo bg-error-demo">错误色</div>
+                </div>
+            </div>
+            
+            <!-- 按钮测试 -->
+            <div class="test-section">
+                <h2>🔘 按钮组件测试</h2>
+                <div class="test-grid">
+                    <button class="btn btn-primary">主要按钮</button>
+                    <button class="btn btn-secondary">次要按钮</button>
+                    <button class="btn btn-success">成功按钮</button>
+                    <button class="btn btn-error">错误按钮</button>
+                    <button class="btn btn-primary" disabled>禁用按钮</button>
+                </div>
+            </div>
+            
+            <!-- 卡片测试 -->
+            <div class="test-section">
+                <h2>📋 卡片组件测试</h2>
+                <div class="test-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>卡片标题</h3>
+                        </div>
+                        <div class="card-body">
+                            <p>这是卡片的内容区域，用于测试在不同主题下的显示效果。</p>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-primary btn-sm">操作</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 表单测试 -->
+            <div class="test-section">
+                <h2>📝 表单组件测试</h2>
+                <div style="max-width: 400px;">
+                    <div style="margin-bottom: 1rem;">
+                        <label>文本输入框</label>
+                        <input type="text" placeholder="请输入文本..." value="测试文本">
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label>下拉选择</label>
+                        <select>
+                            <option>选项 1</option>
+                            <option>选项 2</option>
+                            <option>选项 3</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label>文本区域</label>
+                        <textarea placeholder="请输入多行文本..." rows="3">测试多行文本内容</textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 标签测试 -->
+            <div class="test-section">
+                <h2>🏷️ 标签组件测试</h2>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <span class="chip">默认标签</span>
+                    <span class="chip chip-primary">主要标签</span>
+                    <span class="chip chip-success">成功标签</span>
+                    <span class="chip chip-warning">警告标签</span>
+                    <span class="chip chip-error">错误标签</span>
+                </div>
+            </div>
+            
+            <!-- 警告框测试 -->
+            <div class="test-section">
+                <h2>⚠️ 警告框测试</h2>
+                <div class="alert alert-info">
+                    <strong>信息提示：</strong> 这是一个信息类型的警告框。
+                </div>
+                <div class="alert alert-success">
+                    <strong>成功提示：</strong> 这是一个成功类型的警告框。
+                </div>
+                <div class="alert alert-warning">
+                    <strong>警告提示：</strong> 这是一个警告类型的警告框。
+                </div>
+                <div class="alert alert-error">
+                    <strong>错误提示：</strong> 这是一个错误类型的警告框。
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- JavaScript -->
+    <script src="js/utils.js"></script>
+    <script>
+        // 简化的主题切换功能
+        class ThemeTest {
+            constructor() {
+                this.initTheme();
+            }
+            
+            initTheme() {
+                const savedTheme = localStorage.getItem('theme');
+                let theme = savedTheme;
+                
+                if (!savedTheme) {
+                    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                
+                this.setTheme(theme);
+                this.updateThemeIcon(theme);
+                
+                const themeToggle = document.getElementById('theme-toggle');
+                if (themeToggle) {
+                    themeToggle.addEventListener('click', () => {
+                        const newTheme = this.toggleTheme();
+                        this.updateThemeIcon(newTheme);
+                    });
+                }
+            }
+            
+            setTheme(theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+            }
+            
+            getTheme() {
+                return localStorage.getItem('theme') || 
+                       (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            }
+            
+            toggleTheme() {
+                const currentTheme = this.getTheme();
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                this.setTheme(newTheme);
+                return newTheme;
+            }
+            
+            updateThemeIcon(theme) {
+                const themeIcon = document.getElementById('theme-icon');
+                if (themeIcon) {
+                    if (theme === 'dark') {
+                        themeIcon.className = 'fas fa-sun';
+                        themeIcon.parentElement.title = '切换到浅色模式';
+                    } else {
+                        themeIcon.className = 'fas fa-moon';
+                        themeIcon.parentElement.title = '切换到深色模式';
+                    }
+                }
+            }
+        }
+        
+        // 初始化主题测试
+        document.addEventListener('DOMContentLoaded', () => {
+            new ThemeTest();
+        });
+    </script>
+</body>
+</html>

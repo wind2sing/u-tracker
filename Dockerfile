@@ -34,20 +34,19 @@ RUN ln -sf /app/u-tracker-data/data /app/data && \
 # 设置权限
 RUN chmod +x start.sh || true
 
-# 暴露端口
-# 3001: 统一服务端口（API + 前端）
-EXPOSE 3001
-
 # 设置环境变量
 ENV NODE_ENV=production
 ENV PORT=3001
+
+# 暴露端口（默认3001，可通过环境变量PORT覆盖）
+EXPOSE $PORT
 
 # 设置启动脚本权限
 RUN chmod +x /app/docker-start.sh
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3001/api/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/api/health || exit 1
 
 # 启动应用
 CMD ["/app/docker-start.sh"]
